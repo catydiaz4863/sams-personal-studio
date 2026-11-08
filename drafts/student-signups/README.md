@@ -1,7 +1,7 @@
 # Draft: student sign-ups (paused)
 
-Started, not finished, and **not live**. Nothing in this folder is deployed,
-because Cloudflare only runs code in `/functions`.
+Started, not finished, and **not live**. Nothing in this folder is deployed:
+only `src/worker.js` (and what it imports) runs on Cloudflare.
 
 The idea: students sign up for classes on the site with their name and phone
 (a texted code the first time, via Twilio Verify, ~$2–3/month), see whether
@@ -22,5 +22,5 @@ What's here so far:
 Still to build: booking/cancel endpoints, sign-up and "My classes" pages,
 Sam's sign-up list on the edit page, Square link field.
 
-To resume: move the `functions` files back into `/functions`, add the
-snippet to `wrangler.toml`, and continue.
+To resume: move the files into `src/`, route the new `/api/auth/*` paths in
+`src/worker.js`, add the database snippet to `wrangler.toml`, and continue.

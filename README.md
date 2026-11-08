@@ -2,7 +2,10 @@
 
 A small, fast website for a pole & belly dance studio. Plain HTML/CSS/JS:
 no framework, no build step. The owner edits the monthly schedule from a
-password-protected page, `/admin.html`.
+password-protected page, `/admin`.
+
+It runs as a **Cloudflare Worker**: the files in `public/` are served as-is,
+and `src/` handles the few `/api/*` requests.
 
 ## Pages
 
@@ -12,12 +15,15 @@ password-protected page, `/admin.html`.
 | Monthly schedule | `public/schedule.html` |
 | Classes | `public/classes.html` |
 | Visit & contact | `public/contact.html` |
+| About Sam | `public/about.html` |
 | Owner edit page (not linked anywhere) | `public/admin.html` |
+
+Pages are served at short addresses: `/schedule`, `/classes`, `/about`, `/contact`, `/admin`.
 
 ## How the schedule editing works
 
 - The schedule is stored in Cloudflare KV, a small free database.
-- `functions/api/*.js` are tiny server functions that run on Cloudflare:
+- `src/worker.js` sends `/api/*` requests to the handlers in `src/api/`:
   - `GET /api/schedule`: public, returns the schedule.
   - `POST /api/login`: checks the password and sets a 12-hour login cookie.
   - `PUT /api/schedule`: saves the schedule; only works when logged in.
@@ -34,8 +40,8 @@ password-protected page, `/admin.html`.
 
 | | |
 | --- | --- |
-| Cloudflare Pages hosting | free |
-| Pages Functions + KV | free tier (100k requests/day, 1k saves/day) |
+| Cloudflare Workers hosting + static files | free tier (100k API requests/day; page files are free) |
+| KV storage | free tier (1k saves/day) |
 | Domain | ~$10–15 **per year** (transfer it away from Webador, or buy one at Cloudflare at cost) |
 
 ## Run it locally
@@ -49,29 +55,26 @@ cp .dev.vars.example .dev.vars   # then set a test password in .dev.vars
 ```
 
 ```bash
-npm run dev                      # http://localhost:8788  (edit page: /admin.html)
+npm run dev                      # http://localhost:8788  (edit page: /admin)
 ```
 
 ## Deploy (one time)
 
 1. Create a free Cloudflare account.
-2. Create the KV store and paste the printed id into `wrangler.toml`:
-
-   ```bash
-   npx wrangler kv namespace create SCHEDULE_KV
-   ```
-
-3. In the Cloudflare dashboard: **Workers & Pages → Create → Pages → Connect to Git**,
-   pick this repo, build command *(none)*, output directory `public`.
-4. In the project's **Settings → Variables and Secrets**, add two **secrets**:
+2. Create a KV namespace named `SCHEDULE_KV` (dashboard: **Storage & Databases → KV**,
+   or `npx wrangler kv namespace create SCHEDULE_KV`) and put its id in `wrangler.toml`.
+   This repo's `wrangler.toml` already has the studio's id.
+3. **Workers & Pages → Create → Import a repository**, pick this repo.
+   Deploy command: `npx wrangler deploy` (the default). The Worker's name must match
+   `name` in `wrangler.toml` (`sams-personal-studio`).
+4. In the Worker's **Settings → Variables and Secrets**, add two **secrets**:
    - `ADMIN_PASSWORD`: the owner's password (long, not reused anywhere).
    - `SESSION_SECRET`: a random string of 32+ characters (`openssl rand -base64 48`).
-5. **Settings → Bindings → KV namespace:** variable name `SCHEDULE_KV`, pointing at the store from step 2.
-6. Optional: point the domain at it under **Custom domains**.
+5. Every push to `main` redeploys automatically.
+6. Optional: point the domain at it under **Settings → Domains & Routes**.
 
 Changing `ADMIN_PASSWORD` logs out every existing session.
 
 ## Placeholders still to fill in
 
-- Sam's story, experience and photo on `about.html` (highlighted in yellow).
 - Class descriptions on `classes.html`: written as a first draft, have Sam check them.
