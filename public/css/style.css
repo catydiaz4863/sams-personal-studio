@@ -1104,3 +1104,76 @@ body.admin { padding-bottom: 0; }
   /* contact */
   .contact-card { padding: 22px; }
 }
+
+/* ---------- schedule: "By day / By class" switch (phones & tablets) ---------- */
+.view-toggle { display: none; }
+.class-list { display: none; }
+@media (max-width: 959px) {
+  .view-toggle {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+    padding: 4px;
+    margin-bottom: 14px;
+    background: #efe8e1;
+    border-radius: 14px;
+  }
+  .view-toggle button {
+    min-height: 42px;
+    border: 0;
+    border-radius: 11px;
+    background: transparent;
+    color: var(--ink-soft);
+    font: 700 0.95rem var(--font-body);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .view-toggle button[aria-pressed="true"] {
+    background: var(--card);
+    color: var(--ink);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+  }
+
+  .class-list:not([hidden]) { display: grid; gap: 10px; }
+  .view-by-class .day-tabs,
+  .view-by-class .day-list,
+  .view-by-class .filters { display: none !important; }
+
+  .class-row {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-left: 6px solid var(--cat);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+  }
+  .class-row-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  .class-row h3 { font: 700 1.08rem var(--font-body); margin: 0; letter-spacing: 0; }
+  .class-row h3::before { display: none; }
+  .class-freq { flex: none; font-size: 0.8rem; font-weight: 600; color: var(--ink-soft); }
+  .class-times {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .class-times li {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 6px;
+    padding: 6px 10px;
+    border-radius: 10px;
+    background: var(--cat-tint);
+    font-size: 0.92rem;
+  }
+  .ct-day { font-weight: 800; }
+  .ct-time { font-variant-numeric: tabular-nums; }
+  .class-times li.is-today { background: var(--ink); color: #fff; }
+}

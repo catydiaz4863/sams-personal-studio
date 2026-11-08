@@ -8,6 +8,8 @@
   var noteEl = document.getElementById("sched-note-text");
   var listEl = document.getElementById("day-list");
   var gridEl = document.getElementById("week-grid");
+  var classListEl = document.getElementById("class-list");
+  var toggleEl = document.getElementById("view-toggle");
   var filtersEl = document.getElementById("filters");
   var updatedEl = document.getElementById("updated");
 
@@ -118,6 +120,60 @@
       if (t) showDay(t.getAttribute("data-day"));
     });
     showDay(start);
+
+    // ---- "By class": each class once, with every day/time it runs ----
+    var catOrder = S.CATEGORIES.map(function (c) { return c.key; });
+    var dayOrder = S.DAYS.map(function (d) { return d.key; });
+    var groups = {};
+    classes.forEach(function (c) {
+      var key = c.name.toLowerCase();
+      if (!groups[key]) groups[key] = { name: c.name, cat: c.cat, times: [] };
+      groups[key].times.push(c);
+    });
+    Object.keys(groups).map(function (k) { return groups[k]; })
+      .sort(function (a, b) {
+        return catOrder.indexOf(a.cat) - catOrder.indexOf(b.cat) || a.name.localeCompare(b.name);
+      })
+      .forEach(function (g) {
+        g.times.sort(function (a, b) {
+          return dayOrder.indexOf(a.day) - dayOrder.indexOf(b.day) || (a.time < b.time ? -1 : 1);
+        });
+        var when = el("ul", { class: "class-times" });
+        g.times.forEach(function (c) {
+          var d = S.DAYS[dayOrder.indexOf(c.day)];
+          var isToday = c.day === today;
+          when.appendChild(el("li", { class: isToday ? "is-today" : "" }, [
+            el("span", { class: "ct-day", text: isToday ? "Today" : d.short }),
+            el("span", { class: "ct-time", text: S.formatTime(c.time) })
+          ]));
+        });
+        var label = g.times.length === 1 ? "Once a week" : g.times.length + "× a week";
+        classListEl.appendChild(el("article", { class: "class-row", "data-cat": g.cat }, [
+          el("div", { class: "class-row-head" }, [
+            el("h3", { class: "class-name", text: g.name }),
+            el("span", { class: "class-freq", text: label })
+          ]),
+          when
+        ]));
+      });
+
+    // ---- view switch (phones/tablets); remember the visitor's choice ----
+    function setView(view) {
+      var byClass = view === "class";
+      toggleEl.querySelectorAll("button").forEach(function (b) {
+        b.setAttribute("aria-pressed", String(b.getAttribute("data-view") === view));
+      });
+      classListEl.hidden = !byClass;
+      document.body.classList.toggle("view-by-class", byClass);
+      try { localStorage.setItem("sps-schedule-view", view); } catch (e) { /* private mode */ }
+    }
+    toggleEl.addEventListener("click", function (e) {
+      var b = e.target.closest("button[data-view]");
+      if (b) setView(b.getAttribute("data-view"));
+    });
+    var saved = null;
+    try { saved = localStorage.getItem("sps-schedule-view"); } catch (e) { /* ignore */ }
+    setView(saved === "class" ? "class" : "day");
 
     // ---- desktop grid (rows = time slots, columns = days) ----
     var times = Array.from(new Set(classes.map(function (c) { return c.time; }))).sort();
