@@ -1104,3 +1104,87 @@ body.admin { padding-bottom: 0; }
   /* contact */
   .contact-card { padding: 22px; }
 }
+
+/* ---------- schedule: "By day / By class" switch (phones & tablets) ---------- */
+.view-toggle { display: none; }
+.class-list { display: none; }
+@media (max-width: 959px) {
+  .view-toggle {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+    padding: 4px;
+    margin-bottom: 14px;
+    background: #efe8e1;
+    border-radius: 14px;
+  }
+  .view-toggle button {
+    min-height: 42px;
+    border: 0;
+    border-radius: 11px;
+    background: transparent;
+    color: var(--ink-soft);
+    font: 700 0.95rem var(--font-body);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .view-toggle button[aria-pressed="true"] {
+    background: var(--card);
+    color: var(--ink);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+  }
+
+  .class-list:not([hidden]) { display: grid; gap: 10px; }
+  .view-by-class .day-tabs,
+  .view-by-class .day-list,
+  .view-by-class .filters { display: none !important; }
+
+  .class-row {
+    background: var(--card);
+    border-radius: var(--radius);
+    padding: 14px 16px 16px;
+    box-shadow: 0 1px 2px rgba(23, 19, 26, 0.06);
+  }
+  .class-row-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  .class-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--cat); flex: none; }
+  .class-row h3 { font: 700 1.05rem var(--font-body); margin: 0; letter-spacing: 0; flex: 1; }
+  .class-freq { flex: none; font-size: 0.8rem; font-weight: 600; color: var(--ink-soft); }
+  .slot-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .slot-col { min-width: 0; display: grid; gap: 8px; align-content: start; }
+  .slot-entry strong { display: block; font-weight: 700; font-size: 0.98rem; }
+  .slot-entry span { color: var(--ink-soft); font-size: 0.92rem; font-variant-numeric: tabular-nums; }
+  .slot-entry.has-today span { color: var(--pink-ink); font-weight: 600; }
+}
+
+/* ---------- time of day labels (Daytime / Evening) ---------- */
+.period {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+.period-icon {
+  width: 15px; height: 15px; flex: none;
+  fill: none; stroke-width: 2;
+  stroke-linecap: round; stroke-linejoin: round;
+}
+.period-daytime .period-icon { stroke: var(--orange-ink); }
+.period-evening .period-icon { stroke: var(--blue-ink); }
+
+/* dividers inside a day (By day view) */
+.day-card li.period-head {
+  display: block;
+  padding: 12px 18px 0;
+  border-top: 0;
+}
+.day-card li.period-head + li { border-top: 0; }
+.day-card ul { padding-top: 0; }
+.day-card li + li.period-head { margin-top: 6px; border-top: 1px solid var(--line); padding-top: 14px; }

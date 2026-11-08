@@ -8,10 +8,46 @@
   var noteEl = document.getElementById("sched-note-text");
   var listEl = document.getElementById("day-list");
   var gridEl = document.getElementById("week-grid");
+  var classListEl = document.getElementById("class-list");
+  var toggleEl = document.getElementById("view-toggle");
   var filtersEl = document.getElementById("filters");
   var updatedEl = document.getElementById("updated");
 
   var active = "all";
+
+  // Two groups: Daytime (before 5 PM) and Evening (5 PM on)
+  var PERIODS = {
+    daytime: { label: "Daytime", icon: "sun" },
+    evening: { label: "Evening", icon: "moon" }
+  };
+  function periodOf(hhmm) {
+    return parseInt(hhmm, 10) < 17 ? "daytime" : "evening";
+  }
+  var SVGNS = "http://www.w3.org/2000/svg";
+  var ICON_PATHS = {
+    sun: ["M12 7a5 5 0 1 0 0 10a5 5 0 1 0 0-10z", "M12 1.5v2.5M12 20v2.5M1.5 12H4M20 12h2.5M4.6 4.6l1.8 1.8M17.6 17.6l1.8 1.8M4.6 19.4l1.8-1.8M17.6 6.4l1.8-1.8"],
+    moon: ["M20.5 14.5A8.5 8.5 0 0 1 9.5 3.5a8.5 8.5 0 1 0 11 11z"]
+  };
+  function periodIcon(name) {
+    var svg = document.createElementNS(SVGNS, "svg");
+    svg.setAttribute("viewBox", "0 0 24 24");
+    svg.setAttribute("aria-hidden", "true");
+    svg.setAttribute("class", "period-icon");
+    ICON_PATHS[name].forEach(function (d) {
+      var path = document.createElementNS(SVGNS, "path");
+      path.setAttribute("d", d);
+      svg.appendChild(path);
+    });
+    return svg;
+  }
+  function periodLabel(key) {
+    return el("span", { class: "period period-" + key }, [periodIcon(PERIODS[key].icon), document.createTextNode(PERIODS[key].label)]);
+  }
+  // ["Mon", "Wed"] -> "Mon & Wed"; ["Mon", "Wed", "Fri"] -> "Mon, Wed & Fri"
+  function joinDays(list) {
+    if (list.length < 2) return list.join("");
+    return list.slice(0, -1).join(", ") + " & " + list[list.length - 1];
+  }
 
   S.loadSchedule().then(render).catch(function () {
     listEl.appendChild(el("p", { class: "empty", text: "We couldn't load the schedule. Text us and we'll send it over." }));
@@ -69,8 +105,14 @@
       var h = el("h2", null, [el("span", { text: d.long })]);
       if (isToday) h.appendChild(el("span", { class: "today-tag", text: "Today" }));
       var ul = el("ul");
+      var lastPeriod = null;
       S.sortClasses(classes.filter(function (c) { return c.day === d.key; })).forEach(function (c) {
-        ul.appendChild(el("li", { "data-cat": c.cat, "data-item": "" }, [
+        var period = periodOf(c.time);
+        if (period !== lastPeriod) {
+          ul.appendChild(el("li", { class: "period-head", "data-period-head": period }, [periodLabel(period)]));
+          lastPeriod = period;
+        }
+        ul.appendChild(el("li", { "data-cat": c.cat, "data-item": "", "data-period": period }, [
           el("time", { text: S.formatTime(c.time) }),
           el("span", { class: "class-name", text: c.name })
         ]));
@@ -119,6 +161,68 @@
     });
     showDay(start);
 
+    // ---- "By class": each class once, with every day/time it runs ----
+    var catOrder = S.CATEGORIES.map(function (c) { return c.key; });
+    var dayOrder = S.DAYS.map(function (d) { return d.key; });
+    var groups = {};
+    classes.forEach(function (c) {
+      var key = c.name.toLowerCase();
+      if (!groups[key]) groups[key] = { name: c.name, cat: c.cat, times: [] };
+      groups[key].times.push(c);
+    });
+    Object.keys(groups).map(function (k) { return groups[k]; })
+      .sort(function (a, b) {
+        return catOrder.indexOf(a.cat) - catOrder.indexOf(b.cat) || a.name.localeCompare(b.name);
+      })
+      .forEach(function (g) {
+        // Daytime | Evening columns; matching days combined ("Mon & Wed")
+        var byPeriod = { daytime: {}, evening: {} };
+        g.times.forEach(function (c) {
+          var p = periodOf(c.time);
+          (byPeriod[p][c.time] = byPeriod[p][c.time] || []).push(c.day);
+        });
+        var cols = el("div", { class: "slot-cols" });
+        ["daytime", "evening"].forEach(function (p) {
+          var times = Object.keys(byPeriod[p]).sort();
+          if (!times.length) return;
+          var col = el("div", { class: "slot-col" }, [periodLabel(p)]);
+          times.forEach(function (time) {
+            var dayKeys = byPeriod[p][time].sort(function (a, b) { return dayOrder.indexOf(a) - dayOrder.indexOf(b); });
+            var names = dayKeys.map(function (k) { return S.DAYS[dayOrder.indexOf(k)].short; });
+            var hasToday = dayKeys.indexOf(today) !== -1;
+            col.appendChild(el("div", { class: "slot-entry" + (hasToday ? " has-today" : "") }, [
+              el("strong", { text: joinDays(names) }),
+              el("span", { text: S.formatTime(time) + (hasToday ? " · today" : "") })
+            ]));
+          });
+          cols.appendChild(col);
+        });
+        var head = [el("span", { class: "class-dot" }), el("h3", { text: g.name })];
+        if (g.times.length === 1) head.push(el("span", { class: "class-freq", text: "Once a week" }));
+        classListEl.appendChild(el("article", { class: "class-row", "data-cat": g.cat }, [
+          el("div", { class: "class-row-head" }, head),
+          cols
+        ]));
+      });
+
+    // ---- view switch (phones/tablets); remember the visitor's choice ----
+    function setView(view) {
+      var byClass = view === "class";
+      toggleEl.querySelectorAll("button").forEach(function (b) {
+        b.setAttribute("aria-pressed", String(b.getAttribute("data-view") === view));
+      });
+      classListEl.hidden = !byClass;
+      document.body.classList.toggle("view-by-class", byClass);
+      try { localStorage.setItem("sps-schedule-view", view); } catch (e) { /* private mode */ }
+    }
+    toggleEl.addEventListener("click", function (e) {
+      var b = e.target.closest("button[data-view]");
+      if (b) setView(b.getAttribute("data-view"));
+    });
+    var saved = null;
+    try { saved = localStorage.getItem("sps-schedule-view"); } catch (e) { /* ignore */ }
+    setView(saved === "class" ? "class" : "day");
+
     // ---- desktop grid (rows = time slots, columns = days) ----
     var times = Array.from(new Set(classes.map(function (c) { return c.time; }))).sort();
     var colgroup = el("colgroup", null, [el("col", { class: "time" })]);
@@ -149,6 +253,11 @@
       item.classList.toggle("is-hidden", !show);
     });
     // hide day cards / grid rows that end up empty
+    listEl.querySelectorAll("[data-period-head]").forEach(function (head) {
+      var p = head.getAttribute("data-period-head");
+      var any = head.parentNode.querySelector('[data-period="' + p + '"]:not(.is-hidden)');
+      head.classList.toggle("is-hidden", !any);
+    });
     listEl.querySelectorAll(".day-card").forEach(function (card) {
       card.classList.toggle("is-hidden", !card.querySelector("[data-item]:not(.is-hidden)"));
     });
