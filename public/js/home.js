@@ -30,7 +30,8 @@
     pick.list.forEach(function (c) {
       var li = S.el("li", { "data-cat": S.categoryOf(c.name) }, [
         S.el("time", { text: S.formatTime(c.time) }),
-        S.el("span", { text: c.name })
+        S.el("span", { text: c.name }),
+        S.capacityTag(c)
       ]);
       ul.appendChild(li);
     });

@@ -97,7 +97,15 @@
     return node;
   }
 
+  // Small "8 spots" / "Full" tag for a class, or null if neither is set.
+  function capacityTag(c) {
+    if (c.full) return el("span", { class: "cap-tag is-full", text: "Full" });
+    if (c.capacity) return el("span", { class: "cap-tag", text: c.capacity + " spots" });
+    return null;
+  }
+
   window.SPS = {
+    capacityTag: capacityTag,
     DAYS: DAYS,
     CATEGORIES: CATEGORIES,
     categoryOf: categoryOf,

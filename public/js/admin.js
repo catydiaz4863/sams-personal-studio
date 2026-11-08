@@ -103,7 +103,7 @@
       addBtn.addEventListener("click", function () {
         var row = makeRow({ time: "", name: "" });
         rows.appendChild(row);
-        row.querySelector("input[type=time]").focus();
+        row.querySelector(".f-time").focus();
         markDirty();
       });
       var card = el("section", { class: "admin-card admin-day", "data-day": d.key }, [
@@ -118,14 +118,30 @@
     setMsg("All changes saved.", "");
   }
 
+  var rowCount = 0;
   function makeRow(c) {
-    var time = el("input", { type: "time", value: c.time || "", "aria-label": "Start time", step: "300" });
-    var name = el("input", { type: "text", value: c.name || "", list: "class-names", maxlength: "60", "aria-label": "Class name", placeholder: "Class name" });
+    var id = "row" + (++rowCount);
+    var time = el("input", { type: "time", value: c.time || "", "aria-label": "Start time", step: "300", class: "f-time" });
+    var name = el("input", { type: "text", value: c.name || "", list: "class-names", maxlength: "60", "aria-label": "Class name", placeholder: "Class name", class: "f-name" });
     var swatch = el("span", { class: "swatch", "data-cat": S.categoryOf(c.name) });
     var remove = el("button", { type: "button", class: "remove", "aria-label": "Remove this class", text: "✕" });
-    var row = el("div", { class: "admin-row" }, [time, el("div", { class: "name-wrap" }, [swatch, name]), remove]);
+
+    var cap = el("input", { type: "number", min: "1", max: "99", inputmode: "numeric", id: id + "-cap", class: "f-cap", placeholder: "–" });
+    if (c.capacity) cap.value = c.capacity;
+    var full = el("input", { type: "checkbox", id: id + "-full", class: "f-full" });
+    full.checked = !!c.full;
+
+    var extras = el("div", { class: "row-extras" }, [
+      el("label", { class: "cap-label", for: id + "-cap" }, [el("span", null, [document.createTextNode("Max"), el("span", { class: "cap-text", text: " students" })]), cap]),
+      el("label", { class: "full-label", for: id + "-full" }, [full, document.createTextNode("Full")])
+    ]);
+
+    var row = el("div", { class: "admin-row" + (c.full ? " is-full" : "") }, [
+      time, el("div", { class: "name-wrap" }, [swatch, name]), remove, extras
+    ]);
 
     name.addEventListener("input", function () { swatch.setAttribute("data-cat", S.categoryOf(name.value)); });
+    full.addEventListener("change", function () { row.classList.toggle("is-full", full.checked); });
     remove.addEventListener("click", function () { row.remove(); markDirty(); });
     return row;
   }
@@ -148,8 +164,10 @@
     daysEl.querySelectorAll(".admin-day").forEach(function (card) {
       var day = card.getAttribute("data-day");
       card.querySelectorAll(".admin-row").forEach(function (row) {
-        var time = row.querySelector("input[type=time]");
-        var name = row.querySelector("input[type=text]");
+        var time = row.querySelector(".f-time");
+        var name = row.querySelector(".f-name");
+        var cap = row.querySelector(".f-cap");
+        var full = row.querySelector(".f-full");
         row.classList.remove("has-error");
         if (!name.value.trim() && !time.value) return; // empty row, skip
         if (!name.value.trim() || !time.value) {
@@ -157,7 +175,16 @@
           problem = problem || row;
           return;
         }
-        classes.push({ day: day, time: time.value, name: name.value.trim() });
+        var capVal = cap.value.trim();
+        if (capVal && !(Number(capVal) >= 1 && Number(capVal) <= 99 && Number.isInteger(Number(capVal)))) {
+          row.classList.add("has-error");
+          problem = problem || row;
+          return;
+        }
+        var item = { day: day, time: time.value, name: name.value.trim() };
+        if (capVal) item.capacity = Number(capVal);
+        if (full.checked) item.full = true;
+        classes.push(item);
       });
     });
     return { problem: problem, data: { month: $("month").value, note: $("note").value, classes: classes } };
@@ -166,7 +193,7 @@
   saveBtn.addEventListener("click", function () {
     var result = collect();
     if (result.problem) {
-      setMsg("Each class needs both a time and a name.", "error");
+      setMsg("Each class needs a time and a name (and max students must be 1–99).", "error");
       result.problem.scrollIntoView({ behavior: "smooth", block: "center" });
       return;
     }

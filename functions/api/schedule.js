@@ -59,7 +59,16 @@ function validate(body) {
     if (!name) continue; // ignore blank rows
     if (!DAYS.includes(day)) return { error: `"${name}" has an unknown day.` };
     if (!TIME.test(String(time))) return { error: `"${name}" needs a start time.` };
-    classes.push({ day, time, name });
+    const item = { day, time, name };
+    if (c.capacity !== undefined && c.capacity !== null && c.capacity !== "") {
+      const cap = Number(c.capacity);
+      if (!Number.isInteger(cap) || cap < 1 || cap > 99) {
+        return { error: `"${name}" capacity must be a number from 1 to 99.` };
+      }
+      item.capacity = cap;
+    }
+    if (c.full === true) item.full = true;
+    classes.push(item);
   }
 
   classes.sort((a, b) =>

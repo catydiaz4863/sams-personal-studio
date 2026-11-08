@@ -19,7 +19,7 @@
 
   function render(data) {
     var classes = (data.classes || []).map(function (c) {
-      return { day: c.day, time: c.time, name: c.name, cat: S.categoryOf(c.name) };
+      return { day: c.day, time: c.time, name: c.name, capacity: c.capacity, full: c.full, cat: S.categoryOf(c.name) };
     });
 
     if (data.month) {
@@ -70,9 +70,10 @@
       if (isToday) h.appendChild(el("span", { class: "today-tag", text: "Today" }));
       var ul = el("ul");
       S.sortClasses(classes.filter(function (c) { return c.day === d.key; })).forEach(function (c) {
-        ul.appendChild(el("li", { "data-cat": c.cat, "data-item": "" }, [
+        ul.appendChild(el("li", { "data-cat": c.cat, "data-item": "", class: c.full ? "is-full" : "" }, [
           el("time", { text: S.formatTime(c.time) }),
-          el("span", { class: "class-name", text: c.name })
+          el("span", { class: "class-name", text: c.name }),
+          S.capacityTag(c)
         ]));
       });
       listEl.appendChild(el("section", { class: "day-card" + (isToday ? " is-today" : ""), "data-day": d.key }, [h, ul]));
@@ -96,12 +97,19 @@
       days.forEach(function (d) {
         var td = el("td");
         classes.filter(function (c) { return c.day === d.key && c.time === t; }).forEach(function (c) {
-          td.appendChild(el("span", { class: "slot", "data-cat": c.cat, "data-item": "", text: c.name }));
+          var tag = S.capacityTag(c);
+          td.appendChild(el("span", { class: "slot" + (c.full ? " is-full" : ""), "data-cat": c.cat, "data-item": "" }, [
+            el("span", { class: "slot-name", text: c.name }),
+            tag
+          ]));
         });
         tr.appendChild(td);
       });
       tbody.appendChild(tr);
     });
+    if (classes.some(function (c) { return c.full; })) {
+      document.getElementById("full-note").hidden = false;
+    }
     var caption = el("caption", { class: "sr-only", text: (data.month || "Monthly") + " class schedule" });
     gridEl.appendChild(el("table", null, [caption, colgroup, el("thead", null, [headRow]), tbody]));
   }
