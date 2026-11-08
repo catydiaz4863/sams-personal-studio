@@ -73,7 +73,5 @@ Changing `ADMIN_PASSWORD` logs out every existing session.
 
 ## Placeholders still to fill in
 
-- Phone number `(555) 555-0123`, used in every page.
-- The street address (highlighted in yellow).
-- Instagram / Facebook links in the footer.
+- Sam's story, experience and photo on `about.html` (highlighted in yellow).
 - Class descriptions on `classes.html`: written as a first draft, have Sam check them.
