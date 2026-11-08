@@ -1188,3 +1188,17 @@ body.admin { padding-bottom: 0; }
 .day-card li.period-head + li { border-top: 0; }
 .day-card ul { padding-top: 0; }
 .day-card li + li.period-head { margin-top: 6px; border-top: 1px solid var(--line); padding-top: 14px; }
+
+/* ---------- edit page: social media image ---------- */
+.flyer-buttons { display: flex; flex-wrap: wrap; gap: 10px; }
+.flyer-result { margin-top: 16px; display: grid; gap: 14px; justify-items: start; }
+.flyer-result img {
+  width: 100%;
+  max-width: 360px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  box-shadow: 0 6px 20px rgba(23, 19, 26, 0.1);
+}
+.flyer-result img.story { max-width: 280px; }
+.flyer-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.flyer-card .form-msg { color: var(--ink-soft); margin-top: 10px; }

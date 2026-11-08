@@ -60,6 +60,23 @@
 
     <datalist id="class-names"></datalist>
 
+    <h2 class="admin-h2">Social media image</h2>
+    <div class="admin-card flyer-card">
+      <p class="hint" style="margin:0 0 14px">Make a picture of this month's schedule to post on Instagram or Facebook. It uses what's on this page, even if you haven't saved yet.</p>
+      <div class="flyer-buttons">
+        <button class="btn btn-small" type="button" data-flyer="post">Make Instagram post</button>
+        <button class="btn btn-small btn-ghost" type="button" data-flyer="story">Make Instagram story</button>
+      </div>
+      <p class="form-msg" id="flyer-msg" role="status"></p>
+      <div class="flyer-result" id="flyer-result" hidden>
+        <img id="flyer-img" alt="Preview of the schedule image">
+        <div class="flyer-actions">
+          <button class="btn btn-pink" type="button" id="flyer-share" hidden>Share…</button>
+          <a class="btn" id="flyer-download" download>Download image</a>
+        </div>
+      </div>
+    </div>
+
     <div class="save-bar">
       <p id="save-msg" role="status">All changes saved.</p>
       <button class="btn btn-pink" id="save" type="button">Save &amp; publish</button>
@@ -70,6 +87,7 @@
 </main>
 
 <script src="/js/site.js" defer></script>
+<script src="/js/flyer.js" defer></script>
 <script src="/js/admin.js" defer></script>
 </body>
 </html>
