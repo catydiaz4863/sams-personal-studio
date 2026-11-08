@@ -15,15 +15,13 @@
 
   var active = "all";
 
-  // Morning (before 12), Afternoon (12-5 PM), Evening (5 PM on)
+  // Two groups: Daytime (before 5 PM) and Evening (5 PM on)
   var PERIODS = {
-    morning: { label: "Morning", icon: "sun" },
-    afternoon: { label: "Afternoon", icon: "sun" },
+    daytime: { label: "Daytime", icon: "sun" },
     evening: { label: "Evening", icon: "moon" }
   };
   function periodOf(hhmm) {
-    var h = parseInt(hhmm, 10);
-    return h < 12 ? "morning" : h < 17 ? "afternoon" : "evening";
+    return parseInt(hhmm, 10) < 17 ? "daytime" : "evening";
   }
   var SVGNS = "http://www.w3.org/2000/svg";
   var ICON_PATHS = {
@@ -177,32 +175,33 @@
         return catOrder.indexOf(a.cat) - catOrder.indexOf(b.cat) || a.name.localeCompare(b.name);
       })
       .forEach(function (g) {
-        // Group by time of day, then by start time: "Morning · Mon & Wed · 10:00 AM"
-        var byPeriod = {};
+        // Daytime | Evening columns; matching days combined ("Mon & Wed")
+        var byPeriod = { daytime: {}, evening: {} };
         g.times.forEach(function (c) {
           var p = periodOf(c.time);
-          byPeriod[p] = byPeriod[p] || {};
           (byPeriod[p][c.time] = byPeriod[p][c.time] || []).push(c.day);
         });
-        var slots = el("ul", { class: "class-slots" });
-        ["morning", "afternoon", "evening"].forEach(function (p) {
-          if (!byPeriod[p]) return;
-          Object.keys(byPeriod[p]).sort().forEach(function (time) {
+        var cols = el("div", { class: "slot-cols" });
+        ["daytime", "evening"].forEach(function (p) {
+          var times = Object.keys(byPeriod[p]).sort();
+          if (!times.length) return;
+          var col = el("div", { class: "slot-col" }, [periodLabel(p)]);
+          times.forEach(function (time) {
             var dayKeys = byPeriod[p][time].sort(function (a, b) { return dayOrder.indexOf(a) - dayOrder.indexOf(b); });
             var names = dayKeys.map(function (k) { return S.DAYS[dayOrder.indexOf(k)].short; });
             var hasToday = dayKeys.indexOf(today) !== -1;
-            slots.appendChild(el("li", { class: "slot-row" + (hasToday ? " has-today" : "") }, [
-              periodLabel(p),
-              el("span", { class: "slot-days", text: joinDays(names) }),
-              el("span", { class: "slot-time", text: S.formatTime(time) })
+            col.appendChild(el("div", { class: "slot-entry" + (hasToday ? " has-today" : "") }, [
+              el("strong", { text: joinDays(names) }),
+              el("span", { text: S.formatTime(time) + (hasToday ? " · today" : "") })
             ]));
           });
+          cols.appendChild(col);
         });
-        var head = [el("h3", { class: "class-name", text: g.name })];
+        var head = [el("span", { class: "class-dot" }), el("h3", { text: g.name })];
         if (g.times.length === 1) head.push(el("span", { class: "class-freq", text: "Once a week" }));
         classListEl.appendChild(el("article", { class: "class-row", "data-cat": g.cat }, [
           el("div", { class: "class-row-head" }, head),
-          slots
+          cols
         ]));
       });
 
