@@ -1202,3 +1202,47 @@ body.admin { padding-bottom: 0; }
 .flyer-result img.story { max-width: 280px; }
 .flyer-actions { display: flex; flex-wrap: wrap; gap: 10px; }
 .flyer-card .form-msg { color: var(--ink-soft); margin-top: 10px; }
+
+/* ---------- pricing ---------- */
+.pricing {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-top: 24px;
+  max-width: 640px;
+}
+.price-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-top: 6px solid var(--pink);
+  border-radius: var(--radius);
+  padding: 18px 20px 20px;
+}
+.price-card + .price-card { border-top-color: var(--blue); }
+.price-when { font-weight: 700; font-size: 0.9rem; color: var(--ink-soft); }
+.price-amount { font: 800 2.6rem/1 var(--font-display); letter-spacing: -0.02em; }
+.price-amount small { font: 600 1rem var(--font-body); color: var(--ink-soft); letter-spacing: 0; margin-left: 2px; }
+.price-note { font-size: 0.88rem; color: var(--ink-soft); }
+.price-fee { margin: 16px 0 0; color: var(--ink-soft); }
+.price-fee strong { color: var(--ink); }
+.pricing-wrap { padding-bottom: 24px; }
+.pricing-wrap .pricing { margin-top: 0; }
+@media (max-width: 699px) {
+  .pricing { gap: 10px; margin-top: 16px; }
+  .price-card { padding: 14px 14px 16px; }
+  .price-amount { font-size: 2.1rem; }
+  .price-note { font-size: 0.82rem; }
+  .section-pricing { padding-top: 0; }
+}
+
+/* edit page: prices */
+.price-fields { display: grid; gap: 14px; }
+@media (min-width: 800px) { .price-fields { grid-template-columns: repeat(3, 1fr); } }
+.admin .price-fields label { display: grid; gap: 6px; margin: 0; }
+.money { display: flex; align-items: center; gap: 6px; font: 800 1.3rem var(--font-display); }
+.admin .money input { max-width: 7em; font: 700 1.1rem var(--font-body); }
+.admin .price-fields .hint { margin: 0; font-weight: 500; }
+.admin input.has-error { border-color: #b3261e; background: #fff4f3; }

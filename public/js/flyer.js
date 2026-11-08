@@ -150,7 +150,10 @@
       var days = S.DAYS.filter(function (d) { return classes.some(function (c) { return c.day === d.key; }); });
       var times = Array.from(new Set(classes.map(function (c) { return c.time; }))).sort();
 
-      var footerH = story ? 330 : 190;
+      var footerH = story ? 400 : 250;
+      var prices = S.pricesOf(schedule);
+      var priceLine = "$" + prices.twice + "/mo twice a week  ·  $" + prices.once + "/mo once a week";
+      var feeLine = "$" + prices.registration + " one-time registration fee for new students";
       var gridTop = y;
       var gridBottom = H - footerH - 30;
       var gx = M, gw = W - 2 * M;
@@ -244,38 +247,42 @@
       // ---------- footer ----------
       var fy = H - footerH;
       ctx.textAlign = "center";
+      ctx.fillStyle = C.ink;
+      ctx.font = "800 " + (story ? 36 : 31) + "px " + BODY;
+      ctx.fillText(priceLine, W / 2, fy + (story ? 40 : 34));
+      var by = fy + (story ? 76 : 60);
       if (story) {
-        roundRect(ctx, M, fy, gw, 190, 26);
+        roundRect(ctx, M, by, gw, 190, 26);
         ctx.fillStyle = C.ink;
         ctx.fill();
         ctx.fillStyle = "#fff";
         ctx.font = "800 46px " + DISPLAY;
-        ctx.fillText("Book now: text " + PHONE, W / 2, fy + 82);
+        ctx.fillText("Book now: text " + PHONE, W / 2, by + 82);
         ctx.fillStyle = "#e9c3da";
         ctx.font = "600 32px " + BODY;
-        ctx.fillText("$30 one-time registration fee for new students", W / 2, fy + 140);
+        ctx.fillText(feeLine, W / 2, by + 140);
         ctx.fillStyle = C.ink;
         ctx.font = "400 44px " + SCRIPT;
-        ctx.fillText(HANDLE, W / 2, fy + 262);
+        ctx.fillText(HANDLE, W / 2, by + 268);
       } else {
-        roundRect(ctx, M, fy, gw, 108, 22);
+        roundRect(ctx, M, by, gw, 108, 22);
         ctx.fillStyle = C.ink;
         ctx.fill();
         ctx.textAlign = "left";
         ctx.fillStyle = "#fff";
         ctx.font = "800 38px " + DISPLAY;
-        ctx.fillText("Book now: text " + PHONE, M + 34, fy + 50);
+        ctx.fillText("Book now: text " + PHONE, M + 34, by + 50);
         ctx.fillStyle = "#e9c3da";
         ctx.font = "600 25px " + BODY;
-        ctx.fillText("$30 one-time registration fee for new students", M + 34, fy + 86);
+        ctx.fillText(feeLine, M + 34, by + 86);
         ctx.textAlign = "right";
         ctx.fillStyle = "#fff";
         ctx.font = "400 34px " + SCRIPT;
-        ctx.fillText(HANDLE, W - M - 34, fy + 70);
+        ctx.fillText(HANDLE, W - M - 34, by + 70);
         ctx.textAlign = "center";
         ctx.fillStyle = C.soft;
         ctx.font = "600 24px " + BODY;
-        ctx.fillText(ADDRESS, W / 2, fy + 152);
+        ctx.fillText(ADDRESS, W / 2, by + 150);
       }
       drawStripe(ctx, 0, H - 16, W, 16);
       return canvas;
