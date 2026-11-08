@@ -341,7 +341,10 @@ body { padding-bottom: 80px; }
 }
 .today-list time { font-weight: 700; font-variant-numeric: tabular-nums; }
 @media (min-width: 700px) {
-  .today-list { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+  .today-list { grid-template-columns: repeat(2, 1fr); }
+}
+@media (min-width: 1000px) {
+  .today-list { grid-template-columns: repeat(3, 1fr); }
 }
 
 /* ---------- steps ---------- */
@@ -601,9 +604,14 @@ body { padding-bottom: 80px; }
   }
   .week-grid col.time { width: 7.5em; }
   .slot {
-    display: block;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    min-height: 52px;
+    text-align: left;
     border-radius: 10px;
-    padding: 12px 8px;
+    padding: 10px 12px;
     background: var(--cat-tint);
     color: var(--ink);
     font-weight: 700;
@@ -954,25 +962,32 @@ body.admin { padding-bottom: 0; }
 .facts dd { margin: 2px 0 0; font-weight: 600; }
 .facts .btn { width: 100%; }
 
-/* ---------- capacity tags ---------- */
-.cap-tag {
-  display: inline-block;
+/* ---------- capacity (option C: name left, size right) ---------- */
+.cap {
+  flex: none;
   justify-self: end;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   white-space: nowrap;
-  font: 700 0.75rem/1 var(--font-body);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  padding: 5px 9px;
-  border-radius: 999px;
-  background: #efe8e1;
-  color: var(--ink-soft);
+  font: 700 0.9rem/1 var(--font-body);
+  font-variant-numeric: tabular-nums;
+  color: var(--cat-ink, var(--ink-soft));
 }
-.cap-tag.is-full { background: #b3261e; color: #fff; }
-.today .cap-tag { background: rgba(255, 255, 255, 0.14); color: #fff; }
-.today .cap-tag.is-full { background: #e5484d; }
-.day-card li.is-full .class-name { color: var(--ink-soft); }
-.slot-name { display: block; }
-.slot .cap-tag { margin-top: 6px; font-size: 0.7rem; background: rgba(255, 255, 255, 0.75); }
-.slot .cap-tag.is-full { background: #b3261e; color: #fff; }
-.slot.is-full { opacity: 0.75; }
+.cap-icon { width: 14px; height: 14px; fill: currentColor; }
+.cap.is-full {
+  color: #b3261e;
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+/* full classes go grey everywhere */
+.day-card li.is-full .class-name { color: #8a8290; }
+.day-card li.is-full .class-name::before { background: #c9c1ba; }
+.today .cap { color: #d9d0dd; }
+.today .cap.is-full { color: #ff8a8f; }
+.today-list li.is-full { border-left-color: #6b6470; }
+.today-list li.is-full .today-name { color: #a79fac; }
 .full-note { margin-top: 14px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.full-note .cap { margin-right: 4px; }
+.slot.is-full { background: #f1ece7; border-top-color: #c9c1ba; color: #8a8290; }
