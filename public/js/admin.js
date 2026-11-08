@@ -188,6 +188,55 @@
       .then(function () { saveBtn.disabled = false; });
   });
 
+  // ---------- social media image ----------
+  var flyerMsg = $("flyer-msg");
+  var flyerResult = $("flyer-result");
+  var flyerImg = $("flyer-img");
+  var flyerShare = $("flyer-share");
+  var flyerDownload = $("flyer-download");
+  var flyerBlob = null;
+  var flyerUrl = null;
+
+  document.querySelectorAll("[data-flyer]").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var result = collect();
+      if (result.problem) {
+        flyerMsg.textContent = "Fix the highlighted class first (it needs a time and a name).";
+        result.problem.scrollIntoView({ behavior: "smooth", block: "center" });
+        return;
+      }
+      var format = btn.getAttribute("data-flyer");
+      flyerMsg.textContent = "Making your image…";
+      window.SPSFlyer.render(result.data, format).then(function (canvas) {
+        canvas.toBlob(function (blob) {
+          flyerBlob = blob;
+          if (flyerUrl) URL.revokeObjectURL(flyerUrl);
+          flyerUrl = URL.createObjectURL(blob);
+          var name = "sams-studio-" + (result.data.month || "schedule").toLowerCase().replace(/[^a-z0-9]+/g, "-") + "-" + format + ".png";
+          flyerImg.src = flyerUrl;
+          flyerImg.className = format;
+          flyerDownload.href = flyerUrl;
+          flyerDownload.setAttribute("download", name);
+          flyerDownload.dataset.name = name;
+          var file = new File([blob], name, { type: "image/png" });
+          flyerShare.hidden = !(navigator.canShare && navigator.canShare({ files: [file] }));
+          flyerResult.hidden = false;
+          flyerMsg.textContent = "";
+          flyerResult.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        }, "image/png");
+      }).catch(function () {
+        flyerMsg.textContent = "Couldn't make the image. Try again.";
+      });
+    });
+  });
+
+  // On phones this opens the share sheet (Instagram, Facebook, Messages, Save image…)
+  flyerShare.addEventListener("click", function () {
+    if (!flyerBlob) return;
+    var file = new File([flyerBlob], flyerDownload.dataset.name || "schedule.png", { type: "image/png" });
+    navigator.share({ files: [file] }).catch(function () { /* cancelled */ });
+  });
+
   window.addEventListener("beforeunload", function (e) {
     if (dirty) { e.preventDefault(); e.returnValue = ""; }
   });
