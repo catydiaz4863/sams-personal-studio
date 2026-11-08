@@ -97,7 +97,28 @@
     return node;
   }
 
+  // ---- prices (Sam edits these on the edit page) ----
+  var DEFAULT_PRICES = { twice: 100, once: 75, registration: 30 };
+  function pricesOf(data) {
+    var p = (data && data.prices) || {};
+    return {
+      twice: p.twice != null ? p.twice : DEFAULT_PRICES.twice,
+      once: p.once != null ? p.once : DEFAULT_PRICES.once,
+      registration: p.registration != null ? p.registration : DEFAULT_PRICES.registration
+    };
+  }
+  // Fill every <span data-price="twice|once|registration"> on the page.
+  function applyPrices(data) {
+    var prices = pricesOf(data);
+    document.querySelectorAll("[data-price]").forEach(function (node) {
+      var v = prices[node.getAttribute("data-price")];
+      if (v != null) node.textContent = "$" + v;
+    });
+  }
+
   window.SPS = {
+    pricesOf: pricesOf,
+    applyPrices: applyPrices,
     DAYS: DAYS,
     CATEGORIES: CATEGORIES,
     categoryOf: categoryOf,
@@ -107,4 +128,8 @@
     loadSchedule: loadSchedule,
     el: el
   };
+
+  if (document.querySelector("[data-price]")) {
+    loadSchedule().then(applyPrices).catch(function () { /* keep the printed prices */ });
+  }
 })();

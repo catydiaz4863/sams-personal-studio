@@ -89,6 +89,10 @@
   function fillEditor(data) {
     $("month").value = data.month || "";
     $("note").value = data.note || "";
+    var prices = S.pricesOf(data);
+    $("price-twice").value = prices.twice;
+    $("price-once").value = prices.once;
+    $("price-registration").value = prices.registration;
 
     var names = new Set(KNOWN_NAMES);
     (data.classes || []).forEach(function (c) { names.add(c.name); });
@@ -160,13 +164,22 @@
         classes.push({ day: day, time: time.value, name: name.value.trim() });
       });
     });
-    return { problem: problem, data: { month: $("month").value, note: $("note").value, classes: classes } };
+    var prices = {};
+    ["twice", "once", "registration"].forEach(function (k) {
+      var input = $("price-" + k);
+      var v = input.value.trim();
+      input.classList.remove("has-error");
+      if (v === "") return;
+      if (!/^\d{1,4}$/.test(v)) { input.classList.add("has-error"); problem = problem || input; return; }
+      prices[k] = Number(v);
+    });
+    return { problem: problem, data: { month: $("month").value, note: $("note").value, prices: prices, classes: classes } };
   }
 
   saveBtn.addEventListener("click", function () {
     var result = collect();
     if (result.problem) {
-      setMsg("Each class needs both a time and a name.", "error");
+      setMsg("Each class needs a time and a name, and prices must be whole dollars.", "error");
       result.problem.scrollIntoView({ behavior: "smooth", block: "center" });
       return;
     }

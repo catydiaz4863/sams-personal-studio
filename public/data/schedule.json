@@ -103,5 +103,10 @@
       "name": "Intro to Pole"
     }
   ],
-  "updatedAt": "2026-11-01T00:00:00Z"
+  "updatedAt": "2026-11-01T00:00:00Z",
+  "prices": {
+    "twice": 100,
+    "once": 75,
+    "registration": 30
+  }
 }

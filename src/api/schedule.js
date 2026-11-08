@@ -4,6 +4,7 @@ const KEY = "schedule";
 const PREVIOUS_KEY = "schedule:previous";
 const DAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
 const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
+const DEFAULT_PRICES = { twice: 100, once: 75, registration: 30 };
 
 // GET /api/schedule  (public)
 // Returns the saved schedule, or the starter file in /data/schedule.json if
@@ -65,10 +66,24 @@ function validate(body) {
   classes.sort((a, b) =>
     DAYS.indexOf(a.day) - DAYS.indexOf(b.day) || a.time.localeCompare(b.time));
 
+  // Monthly prices, in whole dollars: per class taken twice a week / once a week,
+  // plus the one-time registration fee for new students.
+  const prices = { ...DEFAULT_PRICES };
+  for (const key of Object.keys(DEFAULT_PRICES)) {
+    const raw = body.prices && body.prices[key];
+    if (raw === undefined || raw === null || raw === "") continue;
+    const n = Number(raw);
+    if (!Number.isInteger(n) || n < 0 || n > 9999) {
+      return { error: "Prices must be whole dollar amounts (0 to 9999)." };
+    }
+    prices[key] = n;
+  }
+
   return {
     data: {
       month: cleanText(body.month, 40) || "This month",
       note: cleanText(body.note, 300),
+      prices,
       classes,
       updatedAt: new Date().toISOString(),
     },
