@@ -1,10 +1,15 @@
 name = "sams-personal-studio"
-pages_build_output_dir = "public"
+main = "src/worker.js"
 compatibility_date = "2025-01-01"
+
+# The website files (pages, CSS, images). Cloudflare serves these directly;
+# only /api/* requests run the code in src/.
+[assets]
+directory = "./public"
+binding = "ASSETS"
 
 # Stores the schedule the owner edits (Cloudflare KV namespace "SCHEDULE_KV").
 # This id is not a secret; the password lives in Cloudflare's dashboard.
 [[kv_namespaces]]
 binding = "SCHEDULE_KV"
 id = "33d4ed3dcee6492eaa778f4d72f3f1a7"
-
