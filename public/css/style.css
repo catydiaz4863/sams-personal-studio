@@ -867,30 +867,50 @@ body { padding-bottom: 80px; }
 body.admin { padding-bottom: 0; }
 
 /* ---------- about page ---------- */
-.about-grid { display: grid; gap: 32px; padding-bottom: 64px; }
-@media (min-width: 900px) { .about-grid { grid-template-columns: 0.9fr 1.1fr; gap: 64px; align-items: start; } }
-.about-photo { margin: 0; }
-.about-photo img, .photo-slot { border-radius: var(--radius); width: 100%; }
-.photo-slot {
-  aspect-ratio: 4 / 5;
-  display: grid; place-items: center;
-  background:
-    linear-gradient(90deg, var(--pink) 0 25%, var(--blue) 25% 50%, var(--orange) 50% 75%, var(--green) 75%);
-  color: #fff; font: 700 1.1rem var(--font-body);
-  opacity: 0.85;
+.about-intro { display: grid; gap: 24px; align-items: center; }
+.portrait { margin: 0; width: 170px; }
+.portrait img {
+  width: 100%;
+  border-radius: var(--radius) var(--radius) 0 0;
+  aspect-ratio: 185 / 283;
+  object-fit: cover;
 }
-.photo-slot span { background: rgba(23, 19, 26, 0.75); padding: 8px 14px; border-radius: 999px; }
-.about-photo figcaption { margin-top: 10px; font-size: 0.95rem; color: var(--ink-soft); }
-@media (min-width: 900px) { .about-photo { position: sticky; top: 100px; } }
-.about-story h2 { font-size: clamp(1.6rem, 3.5vw, 2.2rem); }
-.about-h2 { margin-top: 36px; }
-.about-list { padding-left: 1.2em; }
-.about-list li { margin-bottom: 6px; }
-.placeholder-block { background: #fff4c2; border-radius: 10px; padding: 14px 18px; }
-.about-list.placeholder-block { padding-left: 2.2em; }
-.about-cta {
-  margin-top: 36px; padding: 22px;
-  background: var(--card); border: 1px solid var(--line);
-  border-left: 6px solid var(--pink); border-radius: var(--radius);
+.portrait .stripe { height: 10px; border-radius: 0 0 6px 6px; overflow: hidden; }
+.about-ig { margin: 0; font-weight: 600; }
+@media (min-width: 700px) {
+  .about-intro { grid-template-columns: 210px 1fr; gap: 40px; }
+  .portrait { width: 210px; }
 }
-.about-cta p { margin: 0; }
+
+.about-layout { display: grid; gap: 40px; padding-bottom: 64px; }
+@media (min-width: 960px) {
+  .about-layout { grid-template-columns: minmax(0, 1fr) 320px; gap: 64px; align-items: start; }
+  .facts { position: sticky; top: 100px; }
+}
+.prose { max-width: 40em; }
+.prose p { font-size: 1.08rem; }
+.prose h2 { font-size: clamp(1.5rem, 3vw, 2rem); margin-top: 1.6em; }
+.prose-wide { max-width: 52em; }
+.prose-wide p { color: var(--ink-soft); font-size: 1.08rem; margin: 0 0 1em; }
+.pull {
+  margin: 0 0 1em;
+  padding: 4px 0 4px 20px;
+  border-left: 6px solid var(--pink);
+  font: 400 clamp(1.6rem, 4vw, 2.2rem)/1.3 var(--font-script);
+  color: var(--pink-ink);
+}
+.facts {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 24px;
+}
+.facts h2 { font-size: 1.3rem; }
+.facts dl { margin: 0 0 20px; }
+.facts dl div { padding: 12px 0; border-bottom: 1px solid var(--line); }
+.facts dt {
+  font-size: 0.8rem; font-weight: 700; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--ink-soft);
+}
+.facts dd { margin: 2px 0 0; font-weight: 600; }
+.facts .btn { width: 100%; }
