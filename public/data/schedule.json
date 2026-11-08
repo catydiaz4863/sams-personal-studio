@@ -1,0 +1,107 @@
+{
+  "month": "November 2026",
+  "note": "New students: $30 one-time registration fee. Text us to save your spot.",
+  "classes": [
+    {
+      "day": "mon",
+      "time": "10:00",
+      "name": "Intro to Spin"
+    },
+    {
+      "day": "wed",
+      "time": "10:00",
+      "name": "Intro to Spin"
+    },
+    {
+      "day": "mon",
+      "time": "11:00",
+      "name": "Pole Level 1 & 2"
+    },
+    {
+      "day": "wed",
+      "time": "11:00",
+      "name": "Pole Level 1 & 2"
+    },
+    {
+      "day": "mon",
+      "time": "17:30",
+      "name": "Spin Pole 1 & 2"
+    },
+    {
+      "day": "tue",
+      "time": "17:30",
+      "name": "Pole Level 1 & 2"
+    },
+    {
+      "day": "wed",
+      "time": "17:30",
+      "name": "Spin Pole 1 & 2"
+    },
+    {
+      "day": "thu",
+      "time": "17:30",
+      "name": "Pole Level 1 & 2"
+    },
+    {
+      "day": "mon",
+      "time": "18:30",
+      "name": "Pole Level 3 & 4"
+    },
+    {
+      "day": "tue",
+      "time": "18:30",
+      "name": "Spin Pole 3 & 4"
+    },
+    {
+      "day": "wed",
+      "time": "18:30",
+      "name": "Pole Level 3 & 4"
+    },
+    {
+      "day": "thu",
+      "time": "18:30",
+      "name": "Spin Pole 3 & 4"
+    },
+    {
+      "day": "mon",
+      "time": "19:30",
+      "name": "Intro to Exotic"
+    },
+    {
+      "day": "tue",
+      "time": "19:30",
+      "name": "Belly Dance"
+    },
+    {
+      "day": "wed",
+      "time": "19:30",
+      "name": "Intro to Exotic"
+    },
+    {
+      "day": "thu",
+      "time": "19:30",
+      "name": "Belly Dance"
+    },
+    {
+      "day": "mon",
+      "time": "20:30",
+      "name": "Intro to Spin"
+    },
+    {
+      "day": "tue",
+      "time": "20:30",
+      "name": "Intro to Pole"
+    },
+    {
+      "day": "wed",
+      "time": "20:30",
+      "name": "Intro to Spin"
+    },
+    {
+      "day": "thu",
+      "time": "20:30",
+      "name": "Intro to Pole"
+    }
+  ],
+  "updatedAt": "2026-11-01T00:00:00Z"
+}

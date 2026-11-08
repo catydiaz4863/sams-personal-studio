@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Edit schedule · Sam's Personal Studio</title>
+<link rel="icon" href="/img/icon.png">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="admin">
+<header class="site-header">
+  <div class="stripe" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+  <div class="wrap header-inner">
+    <a class="brand" href="/"><img src="/img/icon.png" alt="" width="44" height="44"><span>Sam's Personal Studio</span></a>
+    <button class="btn btn-small btn-ghost" id="logout" type="button" hidden>Log out</button>
+  </div>
+</header>
+
+<main id="main" class="wrap admin-main">
+
+  <!-- login -->
+  <section id="login-view" class="admin-login" hidden>
+    <h1>Edit the schedule</h1>
+    <p class="lede">This page is just for the studio. Enter the password to make changes.</p>
+    <form id="login-form" class="admin-card">
+      <label for="password">Password</label>
+      <input id="password" name="password" type="password" autocomplete="current-password" required>
+      <button class="btn btn-pink" type="submit">Log in</button>
+      <p class="form-msg" id="login-msg" role="alert"></p>
+    </form>
+  </section>
+
+  <!-- editor -->
+  <section id="editor-view" hidden>
+    <div class="admin-top">
+      <div>
+        <h1>Edit the schedule</h1>
+        <p class="lede">Change anything below, then press <strong>Save &amp; publish</strong>. The website updates right away.</p>
+      </div>
+      <a class="btn btn-ghost btn-small" href="/schedule.html" target="_blank" rel="noopener">View live schedule ↗</a>
+    </div>
+
+    <div class="admin-card admin-fields">
+      <div>
+        <label for="month">Schedule title</label>
+        <input id="month" type="text" maxlength="40" placeholder="December 2026">
+        <p class="hint">Shown as the big heading, e.g. "December 2026".</p>
+      </div>
+      <div>
+        <label for="note">Registration note</label>
+        <textarea id="note" maxlength="300" rows="3" placeholder="New students: $30 one-time registration fee. Text us to save your spot."></textarea>
+        <p class="hint">Shown at the top of the schedule page.</p>
+      </div>
+    </div>
+
+    <h2 class="admin-h2">Classes by day</h2>
+    <p class="hint" style="margin-top:-8px">Colors are picked automatically from the class name (anything with "Spin" is blue, "Belly" is green, and so on).</p>
+    <div id="days" class="admin-days"></div>
+
+    <datalist id="class-names"></datalist>
+
+    <div class="save-bar">
+      <p id="save-msg" role="status">All changes saved.</p>
+      <button class="btn btn-pink" id="save" type="button">Save &amp; publish</button>
+    </div>
+  </section>
+
+  <p id="loading" class="lede">Loading…</p>
+</main>
+
+<script src="/js/site.js" defer></script>
+<script src="/js/admin.js" defer></script>
+</body>
+</html>

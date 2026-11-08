@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Class schedule · Sam's Personal Studio</title>
+<meta name="description" content="This month's pole, spin, exotic and belly dance class schedule at Sam's Personal Studio.">
+<meta name="theme-color" content="#fbf8f4">
+<link rel="icon" href="/img/icon.png">
+<link rel="preload" href="/fonts/figtree-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/bricolage-grotesque-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="stripe" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+  <div class="wrap header-inner">
+    <a class="brand" href="/"><img src="/img/icon.png" alt="" width="44" height="44"><span>Sam's Personal Studio</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav class="site-nav" id="site-nav" aria-label="Main">
+      <a href="/">Home</a>
+      <a href="/schedule.html" aria-current="page">Schedule</a>
+      <a href="/classes.html">Classes</a>
+      <a href="/contact.html">Visit &amp; contact</a>
+    </nav>
+    <a class="btn btn-small btn-pink header-cta" href="sms:+15555550123">Text to register</a>
+  </div>
+</header>
+
+<main id="main">
+<section class="page-head">
+  <div class="wrap">
+    <span class="eyebrow">Class schedule</span>
+    <h1 id="sched-month">This month</h1>
+    <p class="lede">The schedule changes month to month, so check back here. Every class is booked by text.</p>
+  </div>
+</section>
+
+<section class="section-tight" style="padding-top:0">
+  <div class="wrap">
+    <div class="sched-note">
+      <p><strong>How to register:</strong> <span id="sched-note-text">Text us to save your spot. New students pay a one-time $30 registration fee.</span></p>
+      <a class="btn btn-pink" href="sms:+15555550123">Text (555) 555-0123</a>
+    </div>
+
+    <div class="filters" id="filters" role="group" aria-label="Filter classes"></div>
+
+    <div class="day-list" id="day-list"></div>
+    <div class="week-grid" id="week-grid"></div>
+
+    <noscript><p class="empty">Turn on JavaScript to see the schedule, or text us at (555) 555-0123.</p></noscript>
+
+    <div class="legend" aria-hidden="true">
+      <span data-cat="pole">Pole</span>
+      <span data-cat="spin">Spin pole</span>
+      <span data-cat="exotic">Exotic &amp; flow</span>
+      <span data-cat="belly">Belly dance</span>
+    </div>
+    <p class="updated" id="updated"></p>
+  </div>
+</section>
+</main>
+
+<footer class="site-footer">
+  <div class="stripe" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+  <div class="wrap footer-inner">
+    <div>
+      <p class="footer-brand">Sam's Personal Studio</p>
+      <p>Pole, spin pole, exotic and belly dance classes for every level. New students start with an intro class.</p>
+    </div>
+    <div>
+      <h2>Find us</h2>
+      <ul>
+        <li><span class="placeholder">123 Studio Street, Your City</span></li>
+        <li>Text: <a href="sms:+15555550123">(555) 555-0123</a></li>
+        <li><a href="https://instagram.com/" rel="noopener">Instagram</a> · <a href="https://facebook.com/" rel="noopener">Facebook</a></li>
+      </ul>
+    </div>
+    <div>
+      <h2>Pages</h2>
+      <ul>
+        <li><a href="/schedule.html">This month's schedule</a></li>
+        <li><a href="/classes.html">Classes</a></li>
+        <li><a href="/contact.html">Visit &amp; contact</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="wrap footer-bottom">© <span id="year">2026</span> Sam's Personal Studio</div>
+</footer>
+
+<div class="mobile-bar">
+  <a class="btn btn-ghost" href="/schedule.html">Schedule</a>
+  <a class="btn btn-pink" href="sms:+15555550123">Text to register</a>
+</div>
+
+<script src="/js/site.js" defer></script>
+<script src="/js/schedule.js" defer></script>
+<script>document.getElementById('year').textContent=new Date().getFullYear();</script>
+</body>
+</html>
