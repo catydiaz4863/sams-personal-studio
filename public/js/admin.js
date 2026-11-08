@@ -130,7 +130,7 @@
       if (byKey[key].days.indexOf(c.day) === -1) byKey[key].days.push(c.day);
     });
     events = (data.events || []).map(function (e) {
-      return { id: nextId++, type: e.type, title: e.title, date: e.date, time: e.time || "", price: e.price != null ? e.price : "", description: e.description || "" };
+      return { id: nextId++, type: e.type, title: e.title, date: e.date, time: e.time || "", price: e.price != null ? e.price : "", description: e.description || "", image: e.image || "", video: e.video || "" };
     });
     dirty = false;
     render();
@@ -383,7 +383,8 @@
         el("span", { class: "ed-bar" }),
         el("span", { class: "ed-text" }, [
           el("span", { class: "ed-name", text: e.title }),
-          el("span", { class: "ed-when", text: type.label + " · " + when + (past ? " · past" : "") })
+          el("span", { class: "ed-when", text: type.label + " · " + when + (past ? " · past" : "") +
+            (e.image ? " · flyer" : "") + (e.video ? " · video" : "") })
         ]),
         el("span", { class: "ed-chev", text: "›" })
       ]);
@@ -407,7 +408,7 @@
   }
 
   function openEventSheet(e) {
-    editingEvent = e ? Object.assign({}, e) : { id: null, type: "workshop", title: "", date: "", time: "", price: "", description: "" };
+    editingEvent = e ? Object.assign({}, e) : { id: null, type: "workshop", title: "", date: "", time: "", price: "", description: "", image: "", video: "" };
     $("event-title-h").textContent = e ? "Change event" : "New event";
     $("event-delete").hidden = !e;
     $("event-error").textContent = "";
@@ -422,10 +423,83 @@
     t.value = editingEvent.time;
     $("ev-price").value = editingEvent.price;
     $("ev-desc").value = editingEvent.description;
+    $("ev-video").value = editingEvent.video || "";
+    $("ev-image-file").value = "";
+    $("ev-image-status").textContent = "";
+    showFlyer(editingEvent.image);
     drawTypeChips();
     eventSheet.showModal();
     eventSheet.querySelector(".sheet-inner").scrollTop = 0;
   }
+
+  // ---- flyer image: shrink in the browser, then upload ----
+  var uploading = false;
+  function showFlyer(url) {
+    var img = $("ev-image-preview");
+    img.hidden = !url;
+    if (url) img.src = url; else img.removeAttribute("src");
+    $("ev-image-remove").hidden = !url;
+    $("ev-image-label").textContent = url ? "Change flyer" : "Add a flyer";
+  }
+  function isVideoLink(v) {
+    try {
+      var u = new URL(v);
+      var host = u.hostname.replace(/^(www\.|m\.)/, "");
+      return u.protocol === "https:" && ["instagram.com", "youtube.com", "youtu.be", "tiktok.com", "facebook.com", "fb.watch"]
+        .some(function (h) { return host === h || host.slice(-h.length - 1) === "." + h; });
+    } catch (e) { return false; }
+  }
+  // Longest side 1600px, JPEG ~85%: a phone photo becomes ~200-400 KB.
+  function shrinkImage(file) {
+    return new Promise(function (resolve, reject) {
+      var url = URL.createObjectURL(file);
+      var img = new Image();
+      img.onload = function () {
+        var scale = Math.min(1, 1600 / Math.max(img.naturalWidth, img.naturalHeight));
+        var c = document.createElement("canvas");
+        c.width = Math.round(img.naturalWidth * scale);
+        c.height = Math.round(img.naturalHeight * scale);
+        var ctx = c.getContext("2d");
+        ctx.fillStyle = "#fff";
+        ctx.fillRect(0, 0, c.width, c.height);
+        ctx.drawImage(img, 0, 0, c.width, c.height);
+        URL.revokeObjectURL(url);
+        c.toBlob(function (b) { b ? resolve(b) : reject(new Error("shrink failed")); }, "image/jpeg", 0.85);
+      };
+      img.onerror = function () { URL.revokeObjectURL(url); reject(new Error("That file isn't a photo this browser can read.")); };
+      img.src = url;
+    });
+  }
+  $("ev-image-file").addEventListener("change", function () {
+    var file = this.files && this.files[0];
+    if (!file) return;
+    var status = $("ev-image-status");
+    if (!/^image\//.test(file.type) && !/\.(jpe?g|png|webp|heic|heif)$/i.test(file.name)) {
+      status.textContent = "Please pick a photo or image file.";
+      return;
+    }
+    uploading = true;
+    status.textContent = "Uploading flyer…";
+    shrinkImage(file)
+      .then(function (blob) {
+        return fetch("/api/media", { method: "POST", headers: { "Content-Type": "image/jpeg" }, body: blob });
+      })
+      .then(function (r) { return r.json().then(function (b) { return { ok: r.ok, status: r.status, body: b }; }); })
+      .then(function (res) {
+        if (res.status === 401) throw new Error("You've been logged out. Log in again, then add the flyer.");
+        if (!res.ok) throw new Error(res.body.error || "Couldn't upload the flyer.");
+        editingEvent.image = res.body.url;
+        showFlyer(res.body.url);
+        status.textContent = "Flyer added. Tap Done, then Save & publish.";
+      })
+      .catch(function (err) { status.textContent = err.message || "Couldn't upload the flyer. Try again."; })
+      .then(function () { uploading = false; });
+  });
+  $("ev-image-remove").addEventListener("click", function () {
+    editingEvent.image = "";
+    showFlyer("");
+    $("ev-image-status").textContent = "Flyer removed.";
+  });
 
   $("add-event").addEventListener("click", function () { openEventSheet(null); });
   $("event-cancel").addEventListener("click", function () { eventSheet.close(); });
@@ -435,11 +509,15 @@
     var title = $("ev-title").value.trim();
     var date = $("ev-date").value;
     var price = $("ev-price").value.trim();
-    var missing = !title ? "Give the event a name." : !date ? "Pick a date." :
-      (price && !/^\d{1,4}$/.test(price)) ? "Price must be whole dollars, like 25." : "";
+    var video = $("ev-video").value.trim();
+    var missing = uploading ? "Wait for the flyer to finish uploading." :
+      !title ? "Give the event a name." : !date ? "Pick a date." :
+      (price && !/^\d{1,4}$/.test(price)) ? "Price must be whole dollars, like 25." :
+      (video && !isVideoLink(video)) ? "The video link should start with https:// and be from Instagram, YouTube, TikTok or Facebook." : "";
     if (missing) { ev.preventDefault(); $("event-error").textContent = missing; return; }
     var saved = { id: editingEvent.id || nextId++, type: editingEvent.type, title: title, date: date,
-      time: $("ev-time").value, price: price === "" ? "" : Number(price), description: $("ev-desc").value.trim() };
+      time: $("ev-time").value, price: price === "" ? "" : Number(price), description: $("ev-desc").value.trim(),
+      image: editingEvent.image || "", video: video };
     var i = events.findIndex(function (x) { return x.id === saved.id; });
     if (i === -1) events.push(saved); else events[i] = saved;
     markDirty();
@@ -494,6 +572,8 @@
       if (e.time) o.time = e.time;
       if (e.price !== "" && e.price != null) o.price = Number(e.price);
       if (e.description) o.description = e.description;
+      if (e.image) o.image = e.image;
+      if (e.video) o.video = e.video;
       return o;
     });
     return { problem: problem, data: { month: $("month").value, note: $("note").value, prices: prices, events: evs, classes: classes } };

@@ -75,6 +75,19 @@
         <span class="money"><span>$</span><input id="ev-price" type="number" min="0" max="9999" inputmode="numeric" placeholder="–"></span>
         <label class="sheet-label" for="ev-desc">Details <span class="opt">(optional)</span></label>
         <textarea id="ev-desc" class="sheet-input" maxlength="400" rows="3" placeholder="What to bring, who it's for, how long it lasts…"></textarea>
+        <p class="sheet-label">Flyer <span class="opt">(optional)</span></p>
+        <div class="flyer-pick" id="flyer-pick">
+          <img id="ev-image-preview" alt="Flyer preview" hidden>
+          <div class="flyer-pick-buttons">
+            <label class="sheet-cancel file-btn" for="ev-image-file" id="ev-image-label">Add a flyer</label>
+            <input id="ev-image-file" type="file" accept="image/*" class="visually-hidden">
+            <button type="button" class="sheet-cancel" id="ev-image-remove" hidden>Remove</button>
+          </div>
+          <p class="hint" id="ev-image-status"></p>
+        </div>
+        <label class="sheet-label" for="ev-video">Video teaser link <span class="opt">(optional)</span></label>
+        <input id="ev-video" class="sheet-input" type="url" inputmode="url" placeholder="Paste an Instagram or YouTube link">
+        <p class="hint">Post the video on Instagram or YouTube, then copy its link here.</p>
         <p class="sheet-error" id="event-error" role="alert"></p>
         <div class="sheet-actions">
           <button type="button" class="sheet-delete" id="event-delete">Delete</button>

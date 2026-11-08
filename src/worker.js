@@ -5,12 +5,14 @@ import * as login from "./api/login.js";
 import * as logout from "./api/logout.js";
 import * as session from "./api/session.js";
 import * as schedule from "./api/schedule.js";
+import * as media from "./api/media.js";
 
 const ROUTES = {
   "/api/login": login,
   "/api/logout": logout,
   "/api/session": session,
   "/api/schedule": schedule,
+  "/api/media": media,
 };
 
 // "GET" -> "onRequestGet", "PUT" -> "onRequestPut", ...
@@ -37,6 +39,12 @@ export default {
           headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
         });
       }
+    }
+
+    // Uploaded event flyers
+    const m = url.pathname.match(media.MEDIA_PATH);
+    if (m && (request.method === "GET" || request.method === "HEAD")) {
+      return media.serveMedia(request, env, m[1]);
     }
 
     // Anything else: let Cloudflare serve the file (or its 404).

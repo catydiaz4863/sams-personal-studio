@@ -1,4 +1,5 @@
 import { isLoggedIn, sameOrigin, json } from "../_lib/auth.js";
+import { MEDIA_PATH, cleanupMedia } from "./media.js";
 
 const KEY = "schedule";
 const PREVIOUS_KEY = "schedule:previous";
@@ -41,7 +42,26 @@ export async function onRequestPut({ request, env }) {
   if (current) await env.SCHEDULE_KV.put(PREVIOUS_KEY, current);
 
   await env.SCHEDULE_KV.put(KEY, JSON.stringify(result.data));
+  // Remove flyer images that no event uses anymore.
+  try {
+    await cleanupMedia(env, result.data.events.map((e) => e.image).filter(Boolean));
+  } catch (err) {
+    console.error("media cleanup failed", err);
+  }
   return json(result.data);
+}
+
+// Only accept https links to the usual video sites.
+function videoLink(value) {
+  try {
+    const u = new URL(String(value).trim());
+    const host = u.hostname.replace(/^(www\.|m\.)/, "");
+    const ok = ["instagram.com", "youtube.com", "youtu.be", "tiktok.com", "facebook.com", "fb.watch"];
+    if (u.protocol !== "https:" || !ok.some((h) => host === h || host.endsWith("." + h))) return null;
+    return u.toString().slice(0, 300);
+  } catch {
+    return null;
+  }
 }
 
 function cleanText(value, max) {
@@ -108,6 +128,15 @@ function validate(body) {
     }
     const description = cleanText(e.description, 400);
     if (description) ev.description = description;
+    if (e.image) {
+      if (!MEDIA_PATH.test(String(e.image))) return { error: `"${title}" has an invalid flyer image.` };
+      ev.image = e.image;
+    }
+    if (e.video) {
+      const v = videoLink(e.video);
+      if (!v) return { error: `"${title}": the video link must be from Instagram, YouTube, TikTok or Facebook.` };
+      ev.video = v;
+    }
     events.push(ev);
   }
   events.sort((a, b) => (a.date + (a.time || "")).localeCompare(b.date + (b.time || "")));

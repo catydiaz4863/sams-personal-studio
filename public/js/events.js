@@ -18,10 +18,18 @@
     ];
     if (e.description) body.push(el("p", { class: "ev-desc", text: e.description }));
     var foot = [el("a", { class: "btn btn-small btn-pink", href: signup, text: "Text to sign up" })];
+    if (e.video) foot.push(el("a", { class: "btn btn-small btn-ghost", href: e.video, target: "_blank", rel: "noopener", text: "▶ Watch the teaser" }));
     if (e.price != null) foot.unshift(el("span", { class: "ev-price", text: e.price === 0 ? "Free" : "$" + e.price }));
     body.push(el("div", { class: "ev-foot" }, foot));
 
-    return el("article", { class: "ev-card", "data-cat": type.cat }, [
+    var flyer = null;
+    if (e.image) {
+      flyer = el("a", { class: "ev-flyer", href: e.image, target: "_blank", rel: "noopener", "aria-label": "Open the flyer for " + e.title }, [
+        el("img", { src: e.image, alt: "Flyer for " + e.title, loading: "lazy" })
+      ]);
+    }
+    return el("article", { class: "ev-card" + (flyer ? " has-flyer" : ""), "data-cat": type.cat }, [
+      flyer,
       el("div", { class: "ev-date", "aria-hidden": "true" }, [
         el("span", { class: "ev-month", text: d.toLocaleDateString("en-US", { month: "short" }) }),
         el("span", { class: "ev-day", text: String(d.getDate()) }),
