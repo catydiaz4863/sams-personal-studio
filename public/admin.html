@@ -34,38 +34,113 @@
   <!-- editor -->
   <section id="editor-view" hidden>
     <div class="admin-top">
-      <div>
-        <h1>Edit the schedule</h1>
-        <p class="lede">Change anything below, then press <strong>Save &amp; publish</strong>. The website updates right away.</p>
-      </div>
-      <a class="btn btn-ghost btn-small" href="/schedule" target="_blank" rel="noopener">View live schedule ↗</a>
+      <h1>Your classes</h1>
+      <button type="button" class="link-btn" id="open-settings">Month &amp; prices</button>
     </div>
+    <p class="admin-sub" id="admin-sub">Each class with its days and time. Tap a class to change it.</p>
 
-    <div class="admin-card admin-fields">
-      <div>
-        <label for="month">Schedule title</label>
-        <input id="month" type="text" maxlength="40" placeholder="December 2026">
-        <p class="hint">Shown as the big heading, e.g. "December 2026".</p>
-      </div>
-      <div>
-        <label for="note">Registration note</label>
-        <textarea id="note" maxlength="300" rows="3" placeholder="New students: $30 one-time registration fee. Text us to save your spot."></textarea>
-        <p class="hint">Shown at the top of the schedule page.</p>
-      </div>
+    <div class="conflict-box" id="conflicts" role="alert" hidden></div>
+    <div id="class-list" class="ed-list"></div>
+    <button type="button" class="ed-add" id="add-class">+ Add a class</button>
+    <p class="ed-live"><a href="/schedule" target="_blank" rel="noopener">See the live schedule ↗</a></p>
+
+    <div class="admin-top ev-admin-top">
+      <h2 class="admin-h2">Events</h2>
+      <a class="link-btn" href="/events" target="_blank" rel="noopener">See events page ↗</a>
     </div>
+    <p class="admin-sub">Workshops, recitals, drop-ins and parties. Past events disappear from the website by themselves.</p>
+    <div id="event-admin-list" class="ed-list"></div>
+    <button type="button" class="ed-add" id="add-event">+ Add an event</button>
 
-    <h2 class="admin-h2">Prices</h2>
-    <div class="admin-card price-fields">
-      <label>Class twice a week <span class="money"><span>$</span><input id="price-twice" type="number" min="0" max="9999" inputmode="numeric"></span><span class="hint">per month</span></label>
-      <label>Class once a week <span class="money"><span>$</span><input id="price-once" type="number" min="0" max="9999" inputmode="numeric"></span><span class="hint">per month</span></label>
-      <label>Registration fee <span class="money"><span>$</span><input id="price-registration" type="number" min="0" max="9999" inputmode="numeric"></span><span class="hint">new students, one time</span></label>
-    </div>
+    <!-- edit one event -->
+    <dialog class="sheet" id="event-sheet" aria-labelledby="event-title-h">
+      <form method="dialog" class="sheet-inner" id="event-form">
+        <div class="sheet-grab" aria-hidden="true"></div>
+        <h2 id="event-title-h">New event</h2>
+        <p class="sheet-label" id="lbl-etype">Type</p>
+        <div class="chips" id="etype-chips" role="radiogroup" aria-labelledby="lbl-etype"></div>
+        <label class="sheet-label" for="ev-title">Name</label>
+        <input id="ev-title" class="sheet-input" type="text" maxlength="80" placeholder="e.g. Heels Workshop with Sam">
+        <div class="ev-row">
+          <div>
+            <label class="sheet-label" for="ev-date">Date</label>
+            <input id="ev-date" class="sheet-input" type="date">
+          </div>
+          <div>
+            <label class="sheet-label" for="ev-time">Time</label>
+            <select id="ev-time" class="sheet-select"></select>
+          </div>
+        </div>
+        <label class="sheet-label" for="ev-price">Price <span class="opt">(optional)</span></label>
+        <span class="money"><span>$</span><input id="ev-price" type="number" min="0" max="9999" inputmode="numeric" placeholder="–"></span>
+        <label class="sheet-label" for="ev-desc">Details <span class="opt">(optional)</span></label>
+        <textarea id="ev-desc" class="sheet-input" maxlength="400" rows="3" placeholder="What to bring, who it's for, how long it lasts…"></textarea>
+        <p class="sheet-label">Flyer <span class="opt">(optional)</span></p>
+        <div class="flyer-pick" id="flyer-pick">
+          <img id="ev-image-preview" alt="Flyer preview" hidden>
+          <div class="flyer-pick-buttons">
+            <label class="sheet-cancel file-btn" for="ev-image-file" id="ev-image-label">Add a flyer</label>
+            <input id="ev-image-file" type="file" accept="image/*" class="visually-hidden">
+            <button type="button" class="sheet-cancel" id="ev-image-remove" hidden>Remove</button>
+          </div>
+          <p class="hint" id="ev-image-status"></p>
+        </div>
+        <p class="sheet-error" id="event-error" role="alert"></p>
+        <div class="sheet-actions">
+          <button type="button" class="sheet-delete" id="event-delete">Delete</button>
+          <button type="button" class="sheet-cancel" id="event-cancel">Cancel</button>
+          <button type="submit" class="sheet-done" value="done">Done</button>
+        </div>
+      </form>
+    </dialog>
 
-    <h2 class="admin-h2">Classes by day</h2>
-    <p class="hint" style="margin-top:-8px">Colors are picked automatically from the class name (anything with "Spin" is blue, "Belly" is green, and so on).</p>
-    <div id="days" class="admin-days"></div>
+    <!-- edit one class -->
+    <dialog class="sheet" id="class-sheet" aria-labelledby="sheet-title">
+      <form method="dialog" class="sheet-inner" id="class-form">
+        <div class="sheet-grab" aria-hidden="true"></div>
+        <h2 id="sheet-title">Edit class</h2>
 
-    <datalist id="class-names"></datalist>
+        <p class="sheet-label" id="lbl-class">Class</p>
+        <div class="chips" id="name-chips" role="radiogroup" aria-labelledby="lbl-class"></div>
+        <input type="text" id="custom-name" class="sheet-input" maxlength="60" placeholder="Type the class name" hidden>
+
+        <p class="sheet-label" id="lbl-days">Days</p>
+        <div class="chips days" id="day-chips" role="group" aria-labelledby="lbl-days"></div>
+
+        <p class="sheet-label"><label for="time-select">Time</label></p>
+        <select id="time-select" class="sheet-select"></select>
+
+        <p class="sheet-warn" id="sheet-warn" hidden></p>
+        <p class="sheet-error" id="sheet-error" role="alert"></p>
+
+        <div class="sheet-actions">
+          <button type="button" class="sheet-delete" id="sheet-delete">Delete</button>
+          <button type="button" class="sheet-cancel" id="sheet-cancel">Cancel</button>
+          <button type="submit" class="sheet-done" id="sheet-done" value="done">Done</button>
+        </div>
+      </form>
+    </dialog>
+
+    <!-- month, note & prices -->
+    <dialog class="sheet" id="settings-sheet" aria-labelledby="settings-title">
+      <form method="dialog" class="sheet-inner">
+        <div class="sheet-grab" aria-hidden="true"></div>
+        <h2 id="settings-title">Month &amp; prices</h2>
+        <label class="sheet-label" for="month">Schedule title</label>
+        <input id="month" class="sheet-input" type="text" maxlength="40" placeholder="December 2026">
+        <label class="sheet-label" for="note">Note at the top of the schedule</label>
+        <textarea id="note" class="sheet-input" maxlength="300" rows="3" placeholder="New students: $30 one-time registration fee. Text us to save your spot."></textarea>
+        <div class="price-fields">
+          <label>Twice a week <span class="money"><span>$</span><input id="price-twice" type="number" min="0" max="9999" inputmode="numeric"></span><span class="hint">per class, per month</span></label>
+          <label>Once a week <span class="money"><span>$</span><input id="price-once" type="number" min="0" max="9999" inputmode="numeric"></span><span class="hint">per class, per month</span></label>
+          <label>Registration fee <span class="money"><span>$</span><input id="price-registration" type="number" min="0" max="9999" inputmode="numeric"></span><span class="hint">new students, one time</span></label>
+        </div>
+        <p class="sheet-error" id="settings-error" role="alert"></p>
+        <div class="sheet-actions">
+          <button type="submit" class="sheet-done" id="settings-done" value="done">Done</button>
+        </div>
+      </form>
+    </dialog>
 
     <h2 class="admin-h2">Social media image</h2>
     <div class="admin-card flyer-card">
@@ -86,6 +161,7 @@
 
     <div class="save-bar">
       <p id="save-msg" role="status">All changes saved.</p>
+      <button class="btn btn-small btn-ghost" id="undo" type="button" hidden>Undo</button>
       <button class="btn btn-pink" id="save" type="button">Save &amp; publish</button>
     </div>
   </section>

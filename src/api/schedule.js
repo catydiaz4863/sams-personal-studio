@@ -1,10 +1,13 @@
 import { isLoggedIn, sameOrigin, json } from "../_lib/auth.js";
+import { MEDIA_PATH, cleanupMedia } from "./media.js";
 
 const KEY = "schedule";
 const PREVIOUS_KEY = "schedule:previous";
 const DAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
 const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
 const DEFAULT_PRICES = { twice: 100, once: 75, registration: 30 };
+const EVENT_TYPES = ["workshop", "recital", "dropin", "party", "other"];
+const DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 // GET /api/schedule  (public)
 // Returns the saved schedule, or the starter file in /data/schedule.json if
@@ -39,6 +42,12 @@ export async function onRequestPut({ request, env }) {
   if (current) await env.SCHEDULE_KV.put(PREVIOUS_KEY, current);
 
   await env.SCHEDULE_KV.put(KEY, JSON.stringify(result.data));
+  // Remove flyer images that no event uses anymore.
+  try {
+    await cleanupMedia(env, result.data.events.map((e) => e.image).filter(Boolean));
+  } catch (err) {
+    console.error("media cleanup failed", err);
+  }
   return json(result.data);
 }
 
@@ -79,11 +88,48 @@ function validate(body) {
     prices[key] = n;
   }
 
+  // Events (workshops, recitals, drop-ins, parties). Old ones are dropped
+  // 60 days after they happen so the list stays small.
+  const events = [];
+  const rawEvents = Array.isArray(body.events) ? body.events : [];
+  if (rawEvents.length > 60) return { error: "That's more than 60 events." };
+  const cutoff = new Date(Date.now() - 60 * 864e5).toISOString().slice(0, 10);
+  for (const e of rawEvents) {
+    const title = cleanText(e && e.title, 80);
+    if (!title) continue;
+    const type = EVENT_TYPES.includes(e.type) ? e.type : "other";
+    const date = String(e.date || "");
+    if (!DATE.test(date) || isNaN(Date.parse(date + "T00:00:00Z"))) {
+      return { error: `"${title}" needs a date.` };
+    }
+    if (date < cutoff) continue;
+    const ev = { type, title, date };
+    if (e.time) {
+      if (!TIME.test(String(e.time))) return { error: `"${title}" has an invalid time.` };
+      ev.time = e.time;
+    }
+    if (e.price !== undefined && e.price !== null && e.price !== "") {
+      const n = Number(e.price);
+      if (!Number.isInteger(n) || n < 0 || n > 9999) return { error: `"${title}" price must be whole dollars.` };
+      ev.price = n;
+    }
+    const description = cleanText(e.description, 400);
+    if (description) ev.description = description;
+    if (e.image) {
+      if (!MEDIA_PATH.test(String(e.image))) return { error: `"${title}" has an invalid flyer image.` };
+      ev.image = e.image;
+    }
+
+    events.push(ev);
+  }
+  events.sort((a, b) => (a.date + (a.time || "")).localeCompare(b.date + (b.time || "")));
+
   return {
     data: {
       month: cleanText(body.month, 40) || "This month",
       note: cleanText(body.note, 300),
       prices,
+      events,
       classes,
       updatedAt: new Date().toISOString(),
     },
