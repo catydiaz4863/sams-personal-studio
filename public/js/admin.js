@@ -9,7 +9,6 @@
   var editorView = $("editor-view");
   var loading = $("loading");
   var logoutBtn = $("logout");
-  var daysEl = $("days");
   var saveBtn = $("save");
   var saveMsg = $("save-msg");
   var dirty = false;
@@ -67,17 +66,21 @@
     });
   });
 
-  // ---------- editor ----------
+  // ---------- editor: one entry per class + time, with its days ----------
   var CLASS_MINUTES = 60;          // used to spot classes that overlap
   var OTHER = "__other";
-  var daybar = $("daybar");
+  var listEl = $("class-list");
   var conflictsEl = $("conflicts");
   var undoBtn = $("undo");
-  var settings = $("settings");
-  var activeDay = null;
+  var sheet = $("class-sheet");
+  var settingsSheet = $("settings-sheet");
+  var entries = [];               // [{ id, name, days: ["mon","wed"], time: "10:00" }]
+  var nextId = 1;
   var knownNames = [];
+  var editing = null;             // the entry being edited in the sheet (a copy)
   var undoState = null;
   var undoTimer = null;
+  var DAY_KEYS = S.DAYS.map(function (d) { return d.key; });
 
   function showEditor() {
     loginView.hidden = true;
@@ -103,6 +106,11 @@
     TIME_OPTIONS.push(String(Math.floor(m / 60)).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0"));
   }
   function minutes(hhmm) { var p = hhmm.split(":"); return +p[0] * 60 + +p[1]; }
+  function dayShort(k) { return S.DAYS[DAY_KEYS.indexOf(k)].short; }
+  function daysText(days) {
+    var names = days.slice().sort(function (a, b) { return DAY_KEYS.indexOf(a) - DAY_KEYS.indexOf(b); }).map(dayShort);
+    return names.length < 2 ? names.join("") : names.slice(0, -1).join(", ") + " & " + names[names.length - 1];
+  }
 
   function fillEditor(data) {
     $("month").value = data.month || "";
@@ -111,172 +119,91 @@
     $("price-twice").value = prices.twice;
     $("price-once").value = prices.once;
     $("price-registration").value = prices.registration;
-    settings.open = window.matchMedia("(min-width: 1000px)").matches;
 
-    var names = KNOWN_NAMES.slice();
-    (data.classes || []).forEach(function (c) { if (names.indexOf(c.name) === -1) names.push(c.name); });
-    knownNames = names;
-
-    daysEl.textContent = "";
-    daybar.textContent = "";
-    S.DAYS.forEach(function (d) {
-      var rows = el("div", { class: "admin-rows" });
-      var addBtn = el("button", { type: "button", class: "add-class", text: "+ Add a class on " + d.long });
-      addBtn.addEventListener("click", function () {
-        var row = makeRow({ time: "", name: "" });
-        rows.appendChild(row);
-        row.querySelector(".f-name").focus();
-        markDirty();
-      });
-      var count = el("span", { class: "day-count" });
-      var panel = el("section", { class: "admin-card admin-day", "data-day": d.key }, [
-        el("h3", null, [el("span", { text: d.long }), count]), rows, addBtn
-      ]);
-      S.sortClasses((data.classes || []).filter(function (c) { return c.day === d.key; }))
-        .forEach(function (c) { rows.appendChild(makeRow(c)); });
-      daysEl.appendChild(panel);
-
-      var tab = el("button", { type: "button", role: "tab", class: "daybar-tab", "data-day": d.key }, [
-        el("span", { class: "daybar-name", text: d.short }),
-        el("span", { class: "daybar-count" })
-      ]);
-      tab.addEventListener("click", function () { showDay(d.key); });
-      daybar.appendChild(tab);
+    knownNames = KNOWN_NAMES.slice();
+    entries = [];
+    var byKey = {};
+    (data.classes || []).forEach(function (c) {
+      if (knownNames.indexOf(c.name) === -1) knownNames.push(c.name);
+      var key = c.name + "|" + c.time;
+      if (!byKey[key]) { byKey[key] = { id: nextId++, name: c.name, time: c.time, days: [] }; entries.push(byKey[key]); }
+      if (byKey[key].days.indexOf(c.day) === -1) byKey[key].days.push(c.day);
     });
-
-    // open on today, or the next day that has classes
-    if (!activeDay) {
-      var order = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
-      var t = order.indexOf(S.todayKey());
-      activeDay = S.todayKey();
-      for (var i = 0; i < 7; i++) {
-        var k = order[(t + i) % 7];
-        if ((data.classes || []).some(function (c) { return c.day === k; })) { activeDay = k; break; }
-      }
-    }
-    showDay(activeDay);
     dirty = false;
-    refresh();
+    render();
     setMsg("All changes saved.", "");
   }
 
-  function showDay(key) {
-    activeDay = key;
-    daybar.querySelectorAll(".daybar-tab").forEach(function (t) {
-      t.setAttribute("aria-selected", String(t.getAttribute("data-day") === key));
-    });
-    daysEl.querySelectorAll(".admin-day").forEach(function (p) {
-      p.classList.toggle("is-active", p.getAttribute("data-day") === key);
-    });
-  }
-
-  function nameOptions(select, current) {
-    select.textContent = "";
-    select.appendChild(el("option", { value: "", text: "Choose a class…" }));
-    knownNames.forEach(function (n) { select.appendChild(el("option", { value: n, text: n })); });
-    select.appendChild(el("option", { value: OTHER, text: "Other (type a name)…" }));
-    select.value = current && knownNames.indexOf(current) !== -1 ? current : (current ? OTHER : "");
-  }
-
-  function makeRow(c) {
-    var time = el("select", { class: "f-time", "aria-label": "Start time" });
-    time.appendChild(el("option", { value: "", text: "Time" }));
-    var times = TIME_OPTIONS.slice();
-    if (c.time && times.indexOf(c.time) === -1) { times.push(c.time); times.sort(); }
-    times.forEach(function (t) { time.appendChild(el("option", { value: t, text: S.formatTime(t) })); });
-    time.value = c.time || "";
-
-    var name = el("select", { class: "f-name", "aria-label": "Class" });
-    nameOptions(name, c.name);
-    var custom = el("input", { type: "text", class: "f-custom", maxlength: "60", placeholder: "New class name", "aria-label": "New class name" });
-    custom.hidden = name.value !== OTHER;
-    if (name.value === OTHER) custom.value = c.name || "";
-
-    var remove = el("button", { type: "button", class: "remove", "aria-label": "Remove this class" });
-    remove.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>';
-    var warn = el("p", { class: "row-warn", hidden: "" });
-
-    var row = el("div", { class: "admin-row", "data-cat": S.categoryOf(c.name) }, [
-      time, el("div", { class: "name-cell" }, [name, custom]), remove, warn
-    ]);
-
-    name.addEventListener("change", function () {
-      custom.hidden = name.value !== OTHER;
-      if (!custom.hidden) custom.focus();
-      row.setAttribute("data-cat", S.categoryOf(rowName(row)));
-    });
-    custom.addEventListener("input", function () { row.setAttribute("data-cat", S.categoryOf(custom.value)); });
-    time.addEventListener("change", function () { sortRows(row.parentNode); });
-    remove.addEventListener("click", function () { removeRow(row); });
-    return row;
-  }
-
-  function rowName(row) {
-    var sel = row.querySelector(".f-name");
-    return sel.value === OTHER ? row.querySelector(".f-custom").value.trim() : sel.value;
-  }
-
-  function sortRows(rows) {
-    if (!rows) return;
-    Array.from(rows.children)
-      .sort(function (a, b) {
-        var ta = a.querySelector(".f-time").value || "99", tb = b.querySelector(".f-time").value || "99";
-        return ta < tb ? -1 : ta > tb ? 1 : 0;
-      })
-      .forEach(function (r) { rows.appendChild(r); });
-  }
-
-  // Delete with a short "Undo" window in case of a mis-tap.
-  function removeRow(row) {
-    undoState = { row: row, parent: row.parentNode, next: row.nextSibling };
-    row.remove();
-    markDirty();
-    setMsg("Class removed.", "warn");
-    undoBtn.hidden = false;
-    clearTimeout(undoTimer);
-    undoTimer = setTimeout(function () { undoBtn.hidden = true; undoState = null; }, 8000);
-  }
-  undoBtn.addEventListener("click", function () {
-    if (!undoState) return;
-    undoState.parent.insertBefore(undoState.row, undoState.next);
-    undoState = null;
-    undoBtn.hidden = true;
-    markDirty();
-  });
-
-  // Counts, settings summary, and overlap warnings. Runs after every change.
-  function refresh() {
-    var conflicts = [];
-    daysEl.querySelectorAll(".admin-day").forEach(function (panel) {
-      var day = panel.getAttribute("data-day");
-      var rows = Array.from(panel.querySelectorAll(".admin-row"));
-      rows.forEach(function (r) {
-        r.classList.remove("has-conflict");
-        var w = r.querySelector(".row-warn"); w.hidden = true; w.textContent = "";
-      });
-      var filled = rows.filter(function (r) { return r.querySelector(".f-time").value && rowName(r); });
-      for (var i = 0; i < filled.length; i++) {
-        for (var j = i + 1; j < filled.length; j++) {
-          var a = filled[i], b = filled[j];
-          var ta = a.querySelector(".f-time").value, tb = b.querySelector(".f-time").value;
-          if (Math.abs(minutes(ta) - minutes(tb)) >= CLASS_MINUTES) continue;
-          var same = rowName(a) === rowName(b) && ta === tb;
-          [[a, b, tb], [b, a, ta]].forEach(function (x) {
-            x[0].classList.add("has-conflict");
-            var w = x[0].querySelector(".row-warn");
-            w.hidden = false;
-            w.textContent = same ? "This class is listed twice at the same time." :
-              (w.textContent ? w.textContent + " " : "") + "Overlaps " + rowName(x[1]) + " (" + S.formatTime(x[2]) + ").";
-          });
-          conflicts.push({ day: day, text: S.DAYS.filter(function (d) { return d.key === day; })[0].short + ": " +
-            rowName(a) + " " + S.formatTime(ta) + (same ? " is listed twice" : " overlaps " + rowName(b) + " " + S.formatTime(tb)) });
-        }
+  // ---- overlap check: same day, starts less than an hour apart ----
+  function findConflicts(list) {
+    var slots = [];
+    list.forEach(function (e) { e.days.forEach(function (d) { slots.push({ id: e.id, name: e.name, day: d, time: e.time }); }); });
+    var out = [];
+    for (var i = 0; i < slots.length; i++) {
+      for (var j = i + 1; j < slots.length; j++) {
+        var a = slots[i], b = slots[j];
+        if (a.day !== b.day || a.id === b.id) continue;
+        if (Math.abs(minutes(a.time) - minutes(b.time)) >= CLASS_MINUTES) continue;
+        var same = a.name === b.name && a.time === b.time;
+        out.push({ a: a, b: b, same: same,
+          text: dayShort(a.day) + ": " + a.name + " " + S.formatTime(a.time) +
+            (same ? " is listed twice" : " overlaps " + b.name + " " + S.formatTime(b.time)) });
       }
-      var n = rows.length;
-      panel.querySelector(".day-count").textContent = n ? n + (n === 1 ? " class" : " classes") : "";
-      var tab = daybar.querySelector('[data-day="' + day + '"]');
-      tab.querySelector(".daybar-count").textContent = n || "–";
-      tab.classList.toggle("has-conflict", panel.querySelector(".has-conflict") !== null);
+    }
+    return out;
+  }
+  // Plain-language warnings for one entry, with matching days combined:
+  // "Overlaps Pole Level 1 & 2 at 11:00 AM on Mon & Wed"
+  function conflictsFor(id, conflicts) {
+    var groups = {};
+    var order = [];
+    conflicts.forEach(function (c) {
+      if (c.a.id !== id && c.b.id !== id) return;
+      var other = c.a.id === id ? c.b : c.a;
+      var key = (c.same ? "same|" : "") + other.name + "|" + other.time;
+      if (!groups[key]) { groups[key] = { same: c.same, name: other.name, time: other.time, days: [] }; order.push(key); }
+      if (groups[key].days.indexOf(other.day) === -1) groups[key].days.push(other.day);
+    });
+    return order.map(function (k) {
+      var g = groups[k];
+      return g.same ? "Listed twice on " + daysText(g.days) :
+        "Overlaps " + g.name + " at " + S.formatTime(g.time) + " on " + daysText(g.days);
+    });
+  }
+
+  // ---- the list ----
+  function render() {
+    var conflicts = findConflicts(entries);
+    listEl.textContent = "";
+    if (!entries.length) {
+      listEl.appendChild(el("p", { class: "ed-empty", text: "No classes yet. Tap “+ Add a class” to start." }));
+    }
+    var cats = S.CATEGORIES;
+    cats.forEach(function (cat) {
+      var mine = entries.filter(function (e) { return S.categoryOf(e.name) === cat.key; })
+        .sort(function (a, b) {
+          return a.name.localeCompare(b.name) ||
+            DAY_KEYS.indexOf(a.days.slice().sort(function (x, y) { return DAY_KEYS.indexOf(x) - DAY_KEYS.indexOf(y); })[0]) -
+            DAY_KEYS.indexOf(b.days.slice().sort(function (x, y) { return DAY_KEYS.indexOf(x) - DAY_KEYS.indexOf(y); })[0]) ||
+            (a.time < b.time ? -1 : 1);
+        });
+      if (!mine.length) return;
+      var group = el("div", { class: "ed-group" });
+      mine.forEach(function (e) {
+        var warns = conflictsFor(e.id, conflicts);
+        var text = [el("span", { class: "ed-name", text: e.name }),
+          el("span", { class: "ed-when", text: daysText(e.days) + " · " + S.formatTime(e.time) })];
+        if (warns.length) text.push(el("span", { class: "ed-warn", text: warns[0] + (warns.length > 1 ? " (+" + (warns.length - 1) + " more)" : "") }));
+        var item = el("button", { type: "button", class: "ed-item" + (warns.length ? " has-conflict" : ""), "data-cat": cat.key }, [
+          el("span", { class: "ed-bar" }),
+          el("span", { class: "ed-text" }, text),
+          el("span", { class: "ed-chev", text: "›" })
+        ]);
+        item.addEventListener("click", function () { openSheet(e); });
+        group.appendChild(item);
+      });
+      listEl.appendChild(el("h2", { class: "ed-group-title", "data-cat": cat.key, text: cat.label }));
+      listEl.appendChild(group);
     });
 
     conflictsEl.textContent = "";
@@ -284,26 +211,154 @@
     if (conflicts.length) {
       conflictsEl.appendChild(el("strong", { text: conflicts.length === 1 ? "1 time conflict" : conflicts.length + " time conflicts" }));
       var ul = el("ul");
-      conflicts.forEach(function (c) {
-        var b = el("button", { type: "button", text: c.text });
-        b.addEventListener("click", function () { showDay(c.day); });
-        ul.appendChild(el("li", null, [b]));
-      });
+      conflicts.forEach(function (c) { ul.appendChild(el("li", { text: c.text })); });
       conflictsEl.appendChild(ul);
     }
-
-    var p = { twice: $("price-twice").value, once: $("price-once").value, reg: $("price-registration").value };
-    $("settings-summary").textContent = ($("month").value || "No title") + " · $" + p.twice + " / $" + p.once + " / $" + p.reg;
+    $("admin-sub").textContent = ($("month").value || "No month set") + " · Tap a class to change it.";
     return conflicts;
   }
+  var refresh = render;
 
-  editorView.addEventListener("input", markDirty);
-  editorView.addEventListener("change", markDirty);
+  // ---- the edit sheet ----
+  var nameChips = $("name-chips");
+  var dayChips = $("day-chips");
+  var customName = $("custom-name");
+  var timeSelect = $("time-select");
+  var sheetWarn = $("sheet-warn");
+  var sheetError = $("sheet-error");
+
+  function chip(label, pressed, cat) {
+    var b = el("button", { type: "button", class: "chip", "aria-pressed": String(pressed) });
+    if (cat) { b.setAttribute("data-cat", cat); b.appendChild(el("span", { class: "chip-dot" })); }
+    b.appendChild(document.createTextNode(label));
+    return b;
+  }
+
+  function draftName() {
+    return editing.name === OTHER ? customName.value.trim() : editing.name;
+  }
+
+  function drawSheet() {
+    nameChips.textContent = "";
+    knownNames.forEach(function (n) {
+      var b = chip(n, editing.name === n, S.categoryOf(n));
+      b.setAttribute("role", "radio");
+      b.setAttribute("aria-checked", String(editing.name === n));
+      b.addEventListener("click", function () { editing.name = n; drawSheet(); });
+      nameChips.appendChild(b);
+    });
+    var other = chip("Other…", editing.name === OTHER);
+    other.setAttribute("role", "radio");
+    other.setAttribute("aria-checked", String(editing.name === OTHER));
+    other.addEventListener("click", function () { editing.name = OTHER; drawSheet(); customName.focus(); });
+    nameChips.appendChild(other);
+    customName.hidden = editing.name !== OTHER;
+
+    dayChips.textContent = "";
+    S.DAYS.forEach(function (d) {
+      var on = editing.days.indexOf(d.key) !== -1;
+      var b = chip(d.short, on);
+      b.setAttribute("aria-label", d.long);
+      b.addEventListener("click", function () {
+        var i = editing.days.indexOf(d.key);
+        if (i === -1) editing.days.push(d.key); else editing.days.splice(i, 1);
+        drawSheet();
+      });
+      dayChips.appendChild(b);
+    });
+    updateSheetWarn();
+  }
+
+  function updateSheetWarn() {
+    var name = draftName();
+    var time = timeSelect.value;
+    sheetWarn.hidden = true;
+    if (!name || !time || !editing.days.length) return;
+    var draft = { id: "draft", name: name, time: time, days: editing.days };
+    var others = entries.filter(function (e) { return e.id !== editing.id; });
+    var msgs = conflictsFor("draft", findConflicts(others.concat([draft])));
+    if (msgs.length) {
+      sheetWarn.hidden = false;
+      sheetWarn.textContent = "Heads up: " + msgs.join(". ") + ".";
+    }
+  }
+
+  function openSheet(entry) {
+    editing = entry ? { id: entry.id, name: entry.name, time: entry.time, days: entry.days.slice() }
+                    : { id: null, name: "", time: "", days: [] };
+    if (editing.name && knownNames.indexOf(editing.name) === -1) { customName.value = editing.name; editing.name = OTHER; }
+    else customName.value = "";
+    $("sheet-title").textContent = entry ? "Change class" : "New class";
+    $("sheet-delete").hidden = !entry;
+    sheetError.textContent = "";
+
+    timeSelect.textContent = "";
+    timeSelect.appendChild(el("option", { value: "", text: "Pick a time" }));
+    var times = TIME_OPTIONS.slice();
+    if (editing.time && times.indexOf(editing.time) === -1) { times.push(editing.time); times.sort(); }
+    times.forEach(function (t) { timeSelect.appendChild(el("option", { value: t, text: S.formatTime(t) })); });
+    timeSelect.value = editing.time || "";
+
+    drawSheet();
+    sheet.showModal();
+    sheet.querySelector(".sheet-inner").scrollTop = 0;
+  }
+
+  timeSelect.addEventListener("change", updateSheetWarn);
+  customName.addEventListener("input", updateSheetWarn);
+  $("sheet-cancel").addEventListener("click", function () { sheet.close(); });
+  // tap the dark area around the sheet to close it
+  [sheet, settingsSheet].forEach(function (d) {
+    d.addEventListener("click", function (e) { if (e.target === d) d.close(); });
+  });
+
+  $("class-form").addEventListener("submit", function (e) {
+    var name = draftName();
+    var time = timeSelect.value;
+    var missing = !name ? "Pick a class." : !editing.days.length ? "Pick at least one day." : !time ? "Pick a time." : "";
+    if (missing) { e.preventDefault(); sheetError.textContent = missing; return; }
+    var saved = { id: editing.id || nextId++, name: name, time: time, days: editing.days.slice() };
+    var i = entries.findIndex(function (x) { return x.id === saved.id; });
+    if (i === -1) entries.push(saved); else entries[i] = saved;
+    if (knownNames.indexOf(name) === -1) knownNames.push(name);
+    markDirty();
+  });
+
+  $("sheet-delete").addEventListener("click", function () {
+    var i = entries.findIndex(function (x) { return x.id === editing.id; });
+    if (i === -1) return;
+    undoState = { entry: entries[i], index: i };
+    entries.splice(i, 1);
+    sheet.close();
+    markDirty();
+    setMsg("Class removed.", "warn");
+    undoBtn.hidden = false;
+    clearTimeout(undoTimer);
+    undoTimer = setTimeout(function () { undoBtn.hidden = true; undoState = null; }, 10000);
+  });
+  undoBtn.addEventListener("click", function () {
+    if (!undoState) return;
+    entries.splice(undoState.index, 0, undoState.entry);
+    undoState = null;
+    undoBtn.hidden = true;
+    markDirty();
+  });
+
+  $("add-class").addEventListener("click", function () { openSheet(null); });
+
+  // ---- month & prices sheet ----
+  $("open-settings").addEventListener("click", function () { $("settings-error").textContent = ""; settingsSheet.showModal(); });
+  settingsSheet.addEventListener("input", markDirty);
+  settingsSheet.querySelector("form").addEventListener("submit", function (e) {
+    var bad = ["twice", "once", "registration"].some(function (k) { var v = $("price-" + k).value.trim(); return v !== "" && !/^\d{1,4}$/.test(v); });
+    if (bad) { e.preventDefault(); $("settings-error").textContent = "Prices must be whole dollars, like 100."; }
+    render();
+  });
 
   function markDirty() {
     dirty = true;
     setMsg("You have unsaved changes.", "warn");
-    refresh();
+    render();
   }
 
   function setMsg(text, kind) {
@@ -311,32 +366,17 @@
     saveMsg.className = kind || "";
   }
 
-  // Show a problem field: switch to its day (phones) or open the settings.
+  // Show a problem field (only prices can be invalid now).
   function reveal(node) {
-    var panel = node.closest(".admin-day");
-    if (panel) showDay(panel.getAttribute("data-day"));
-    if (node.closest("#settings")) settings.open = true;
-    node.scrollIntoView({ behavior: "smooth", block: "center" });
+    if (node.closest("#settings-sheet")) { settingsSheet.showModal(); node.focus(); }
   }
 
   function collect() {
     var classes = [];
-    var problem = null;
-    daysEl.querySelectorAll(".admin-day").forEach(function (panel) {
-      var day = panel.getAttribute("data-day");
-      panel.querySelectorAll(".admin-row").forEach(function (row) {
-        var time = row.querySelector(".f-time").value;
-        var name = rowName(row);
-        row.classList.remove("has-error");
-        if (!name && !time) return; // empty row, skip
-        if (!name || !time) {
-          row.classList.add("has-error");
-          problem = problem || row;
-          return;
-        }
-        classes.push({ day: day, time: time, name: name });
-      });
+    entries.forEach(function (e) {
+      e.days.forEach(function (d) { classes.push({ day: d, time: e.time, name: e.name }); });
     });
+    var problem = null;
     var prices = {};
     ["twice", "once", "registration"].forEach(function (k) {
       var input = $("price-" + k);
@@ -352,7 +392,7 @@
   saveBtn.addEventListener("click", function () {
     var result = collect();
     if (result.problem) {
-      setMsg("Each class needs a time and a class name, and prices must be whole dollars.", "error");
+      setMsg("Prices must be whole dollars. Check Month & prices.", "error");
       reveal(result.problem);
       return;
     }
@@ -393,7 +433,7 @@
     btn.addEventListener("click", function () {
       var result = collect();
       if (result.problem) {
-        flyerMsg.textContent = "Fix the highlighted class first (it needs a time and a class name).";
+        flyerMsg.textContent = "Prices must be whole dollars. Check Month & prices.";
         reveal(result.problem);
         return;
       }

@@ -34,41 +34,63 @@
   <!-- editor -->
   <section id="editor-view" hidden>
     <div class="admin-top">
-      <h1>Edit the schedule</h1>
-      <a class="admin-live" href="/schedule" target="_blank" rel="noopener">View live ↗</a>
+      <h1>Your classes</h1>
+      <button type="button" class="link-btn" id="open-settings">Month &amp; prices</button>
     </div>
+    <p class="admin-sub" id="admin-sub">Each class with its days and time. Tap a class to change it.</p>
 
-    <details class="admin-card settings" id="settings">
-      <summary>
-        <span class="settings-title">Month, note &amp; prices</span>
-        <span class="settings-summary" id="settings-summary"></span>
-      </summary>
-      <div class="settings-body">
-        <div>
-          <label for="month">Schedule title</label>
-          <input id="month" type="text" maxlength="40" placeholder="December 2026">
-          <p class="hint">The big heading on the schedule, e.g. "December 2026".</p>
+    <div class="conflict-box" id="conflicts" role="alert" hidden></div>
+    <div id="class-list" class="ed-list"></div>
+    <button type="button" class="ed-add" id="add-class">+ Add a class</button>
+    <p class="ed-live"><a href="/schedule" target="_blank" rel="noopener">See the live schedule ↗</a></p>
+
+    <!-- edit one class -->
+    <dialog class="sheet" id="class-sheet" aria-labelledby="sheet-title">
+      <form method="dialog" class="sheet-inner" id="class-form">
+        <div class="sheet-grab" aria-hidden="true"></div>
+        <h2 id="sheet-title">Edit class</h2>
+
+        <p class="sheet-label" id="lbl-class">Class</p>
+        <div class="chips" id="name-chips" role="radiogroup" aria-labelledby="lbl-class"></div>
+        <input type="text" id="custom-name" class="sheet-input" maxlength="60" placeholder="Type the class name" hidden>
+
+        <p class="sheet-label" id="lbl-days">Days</p>
+        <div class="chips days" id="day-chips" role="group" aria-labelledby="lbl-days"></div>
+
+        <p class="sheet-label"><label for="time-select">Time</label></p>
+        <select id="time-select" class="sheet-select"></select>
+
+        <p class="sheet-warn" id="sheet-warn" hidden></p>
+        <p class="sheet-error" id="sheet-error" role="alert"></p>
+
+        <div class="sheet-actions">
+          <button type="button" class="sheet-delete" id="sheet-delete">Delete</button>
+          <button type="button" class="sheet-cancel" id="sheet-cancel">Cancel</button>
+          <button type="submit" class="sheet-done" id="sheet-done" value="done">Done</button>
         </div>
-        <div>
-          <label for="note">Registration note</label>
-          <textarea id="note" maxlength="300" rows="3" placeholder="New students: $30 one-time registration fee. Text us to save your spot."></textarea>
-          <p class="hint">Shown at the top of the schedule page.</p>
-        </div>
+      </form>
+    </dialog>
+
+    <!-- month, note & prices -->
+    <dialog class="sheet" id="settings-sheet" aria-labelledby="settings-title">
+      <form method="dialog" class="sheet-inner">
+        <div class="sheet-grab" aria-hidden="true"></div>
+        <h2 id="settings-title">Month &amp; prices</h2>
+        <label class="sheet-label" for="month">Schedule title</label>
+        <input id="month" class="sheet-input" type="text" maxlength="40" placeholder="December 2026">
+        <label class="sheet-label" for="note">Note at the top of the schedule</label>
+        <textarea id="note" class="sheet-input" maxlength="300" rows="3" placeholder="New students: $30 one-time registration fee. Text us to save your spot."></textarea>
         <div class="price-fields">
           <label>Twice a week <span class="money"><span>$</span><input id="price-twice" type="number" min="0" max="9999" inputmode="numeric"></span><span class="hint">per class, per month</span></label>
           <label>Once a week <span class="money"><span>$</span><input id="price-once" type="number" min="0" max="9999" inputmode="numeric"></span><span class="hint">per class, per month</span></label>
           <label>Registration fee <span class="money"><span>$</span><input id="price-registration" type="number" min="0" max="9999" inputmode="numeric"></span><span class="hint">new students, one time</span></label>
         </div>
-      </div>
-    </details>
-
-    <div class="classes-head">
-      <h2 class="admin-h2">Classes</h2>
-      <p class="hint">Classes are 1 hour. Overlaps are flagged in red.</p>
-    </div>
-    <div class="conflict-box" id="conflicts" role="alert" hidden></div>
-    <div class="admin-daybar" id="daybar" role="tablist" aria-label="Pick a day to edit"></div>
-    <div id="days" class="admin-days"></div>
+        <p class="sheet-error" id="settings-error" role="alert"></p>
+        <div class="sheet-actions">
+          <button type="submit" class="sheet-done" id="settings-done" value="done">Done</button>
+        </div>
+      </form>
+    </dialog>
 
     <h2 class="admin-h2">Social media image</h2>
     <div class="admin-card flyer-card">
