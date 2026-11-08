@@ -2,10 +2,9 @@ name = "sams-personal-studio"
 pages_build_output_dir = "public"
 compatibility_date = "2025-01-01"
 
-# Stores the schedule the owner edits. Create it once with:
-#   npx wrangler kv namespace create SCHEDULE_KV
-# then paste the id it prints below.
+# Stores the schedule the owner edits (Cloudflare KV namespace "SCHEDULE_KV").
+# This id is not a secret; the password lives in Cloudflare's dashboard.
 [[kv_namespaces]]
 binding = "SCHEDULE_KV"
-id = "REPLACE_WITH_YOUR_KV_NAMESPACE_ID"
+id = "33d4ed3dcee6492eaa778f4d72f3f1a7"
 
