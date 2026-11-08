@@ -1,0 +1,9 @@
+# Student sign-ups and class history. Create it once with:
+#   npx wrangler d1 create sams-studio
+# paste the database_id it prints below, then create the tables:
+#   npx wrangler d1 migrations apply sams-studio --remote
+[[d1_databases]]
+binding = "DB"
+database_name = "sams-studio"
+database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
+migrations_dir = "migrations"
