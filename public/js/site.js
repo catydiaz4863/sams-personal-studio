@@ -97,31 +97,7 @@
     return node;
   }
 
-  // Capacity marker shown at the right of a class: person icon + number, or "Full".
-  var SVG = "http://www.w3.org/2000/svg";
-  function personIcon() {
-    var svg = document.createElementNS(SVG, "svg");
-    svg.setAttribute("viewBox", "0 0 24 24");
-    svg.setAttribute("aria-hidden", "true");
-    svg.setAttribute("class", "cap-icon");
-    var head = document.createElementNS(SVG, "circle");
-    head.setAttribute("cx", "12"); head.setAttribute("cy", "7.5"); head.setAttribute("r", "4");
-    var body = document.createElementNS(SVG, "path");
-    body.setAttribute("d", "M4 21c0-4.4 3.6-7.5 8-7.5s8 3.1 8 7.5z");
-    svg.appendChild(head); svg.appendChild(body);
-    return svg;
-  }
-  function capacityTag(c) {
-    if (c.full) return el("span", { class: "cap is-full", text: "Full" });
-    if (!c.capacity) return null;
-    var label = "Max " + c.capacity + (c.capacity === 1 ? " student" : " students");
-    var tag = el("span", { class: "cap", title: label }, [personIcon(), el("span", { class: "sr-only", text: label })]);
-    tag.appendChild(el("span", { "aria-hidden": "true", text: String(c.capacity) }));
-    return tag;
-  }
-
   window.SPS = {
-    capacityTag: capacityTag,
     DAYS: DAYS,
     CATEGORIES: CATEGORIES,
     categoryOf: categoryOf,

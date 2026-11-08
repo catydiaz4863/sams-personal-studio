@@ -331,7 +331,7 @@ body { padding-bottom: 80px; }
 }
 .today-list li {
   display: grid;
-  grid-template-columns: 5.5em 1fr auto;
+  grid-template-columns: 5.5em 1fr;
   align-items: center;
   gap: 12px;
   padding: 10px 14px;
@@ -539,7 +539,7 @@ body { padding-bottom: 80px; }
 .day-card ul { list-style: none; margin: 0; padding: 6px 0; }
 .day-card li {
   display: grid;
-  grid-template-columns: 5.2em 1fr auto;
+  grid-template-columns: 5.2em 1fr;
   gap: 12px;
   align-items: center;
   padding: 12px 18px;
@@ -604,14 +604,9 @@ body { padding-bottom: 80px; }
   }
   .week-grid col.time { width: 7.5em; }
   .slot {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    min-height: 52px;
-    text-align: left;
+    display: block;
     border-radius: 10px;
-    padding: 10px 12px;
+    padding: 12px 8px;
     background: var(--cat-tint);
     color: var(--ink);
     font-weight: 700;
@@ -840,39 +835,7 @@ body { padding-bottom: 80px; }
   grid-template-columns: 7.6em 1fr 44px;
   gap: 8px;
   align-items: center;
-  padding-bottom: 12px;
-  border-bottom: 1px dashed var(--line);
 }
-.admin-rows .admin-row:last-child { border-bottom: 0; padding-bottom: 0; }
-.row-extras {
-  grid-column: 1 / -1;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px 20px;
-}
-.admin .row-extras label {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  margin: 0;
-  font-weight: 600;
-  font-size: 0.92rem;
-  color: var(--ink-soft);
-  cursor: pointer;
-}
-.admin input.f-cap {
-  width: 4.5em;
-  min-height: 40px;
-  padding: 6px 8px;
-  border: 2px solid var(--line);
-  border-radius: 10px;
-  font: 600 1rem var(--font-body);
-  text-align: center;
-}
-.admin input.f-full { width: 22px; height: 22px; accent-color: var(--pink-ink); }
-.admin-row.is-full .f-name { text-decoration: line-through; color: var(--ink-soft); }
-.admin-row.is-full .full-label { color: #b3261e; }
 .admin-row.has-error input { border-color: #b3261e; background: #fff4f3; }
 .name-wrap { position: relative; }
 .admin .name-wrap input { padding-left: 30px; }
@@ -890,14 +853,12 @@ body { padding-bottom: 80px; }
 @media (max-width: 599px) {
   .admin-row {
     grid-template-columns: 1fr 44px;
-    grid-template-areas: "name remove" "time time" "extras extras";
+    grid-template-areas: "name remove" "time time";
   }
   .admin-row .name-wrap { grid-area: name; }
   .admin-row .remove { grid-area: remove; }
-  .admin-row .f-time { grid-area: time; max-width: 11em; }
-  .admin-row .row-extras { grid-area: extras; grid-column: auto; gap: 8px 14px; }
-  .admin .row-extras label { font-size: 0.85rem; }
-  .cap-text { display: none; }
+  .admin-row input[type="time"] { grid-area: time; max-width: 11em; }
+  .admin-rows .admin-row + .admin-row { padding-top: 10px; border-top: 1px dashed var(--line); }
 }
 .save-bar {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 60;
@@ -961,33 +922,3 @@ body.admin { padding-bottom: 0; }
 }
 .facts dd { margin: 2px 0 0; font-weight: 600; }
 .facts .btn { width: 100%; }
-
-/* ---------- capacity (option C: name left, size right) ---------- */
-.cap {
-  flex: none;
-  justify-self: end;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  white-space: nowrap;
-  font: 700 0.9rem/1 var(--font-body);
-  font-variant-numeric: tabular-nums;
-  color: var(--cat-ink, var(--ink-soft));
-}
-.cap-icon { width: 14px; height: 14px; fill: currentColor; }
-.cap.is-full {
-  color: #b3261e;
-  font-size: 0.75rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-/* full classes go grey everywhere */
-.day-card li.is-full .class-name { color: #8a8290; }
-.day-card li.is-full .class-name::before { background: #c9c1ba; }
-.today .cap { color: #d9d0dd; }
-.today .cap.is-full { color: #ff8a8f; }
-.today-list li.is-full { border-left-color: #6b6470; }
-.today-list li.is-full .today-name { color: #a79fac; }
-.full-note { margin-top: 14px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-.full-note .cap { margin-right: 4px; }
-.slot.is-full { background: #f1ece7; border-top-color: #c9c1ba; color: #8a8290; }

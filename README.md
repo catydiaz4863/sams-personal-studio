@@ -27,8 +27,6 @@ password-protected page, `/admin.html`.
   - Logins lock for 15 minutes after 5 wrong passwords.
   - Cross-site requests are rejected.
   - All schedule text is inserted as plain text, never as HTML.
-- Each class can have an optional max class size and a "Full" switch.
-  Full classes show a red FULL tag and a "text us to join the waitlist" note.
 - Every save keeps the previous version under the KV key `schedule:previous`.
 - `public/data/schedule.json` is the starter schedule, used until the first save.
 
