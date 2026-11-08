@@ -116,7 +116,46 @@
     });
   }
 
+  // ---- events ----
+  var EVENT_TYPES = [
+    { key: "workshop", label: "Workshop", cat: "pole" },
+    { key: "recital", label: "Recital / show", cat: "spin" },
+    { key: "dropin", label: "Drop-in class", cat: "exotic" },
+    { key: "party", label: "Party", cat: "belly" },
+    { key: "other", label: "Event", cat: "stretch" }
+  ];
+  function eventType(key) {
+    return EVENT_TYPES.filter(function (t) { return t.key === key; })[0] || EVENT_TYPES[4];
+  }
+  function localDateKey(d) {
+    d = d || new Date();
+    return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+  }
+  // Events from today on, soonest first.
+  function upcomingEvents(data) {
+    var today = localDateKey();
+    return ((data && data.events) || []).filter(function (e) { return e.date >= today; })
+      .sort(function (a, b) { return (a.date + (a.time || "")).localeCompare(b.date + (b.time || "")); });
+  }
+  // "2026-12-05" -> Date at local noon (avoids timezone day shifts)
+  function parseDate(ymd) { var p = ymd.split("-"); return new Date(+p[0], +p[1] - 1, +p[2], 12); }
+  function formatDate(ymd, opts) {
+    return parseDate(ymd).toLocaleDateString("en-US", opts || { weekday: "long", month: "long", day: "numeric" });
+  }
+  // Text-message link to the studio with a message already written.
+  var STUDIO_PHONE = "+19565338273";
+  function smsLink(message) {
+    return "sms:" + STUDIO_PHONE + "?&body=" + encodeURIComponent(message);
+  }
+
   window.SPS = {
+    EVENT_TYPES: EVENT_TYPES,
+    eventType: eventType,
+    upcomingEvents: upcomingEvents,
+    parseDate: parseDate,
+    formatDate: formatDate,
+    localDateKey: localDateKey,
+    smsLink: smsLink,
     pricesOf: pricesOf,
     applyPrices: applyPrices,
     DAYS: DAYS,

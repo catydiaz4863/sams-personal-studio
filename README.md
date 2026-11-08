@@ -15,10 +15,11 @@ and `src/` handles the few `/api/*` requests.
 | Monthly schedule | `public/schedule.html` |
 | Classes | `public/classes.html` |
 | Visit & contact | `public/contact.html` |
+| Events, workshops & party rental | `public/events.html` |
 | About Sam | `public/about.html` |
 | Owner edit page (not linked anywhere) | `public/admin.html` |
 
-Pages are served at short addresses: `/schedule`, `/classes`, `/about`, `/contact`, `/admin`.
+Pages are served at short addresses: `/schedule`, `/classes`, `/events`, `/about`, `/contact`, `/admin`.
 
 ## How the schedule editing works
 
@@ -33,6 +34,8 @@ Pages are served at short addresses: `/schedule`, `/classes`, `/about`, `/contac
   - Logins lock for 15 minutes after 5 wrong passwords.
   - Cross-site requests are rejected.
   - All schedule text is inserted as plain text, never as HTML.
+- Events (workshops, recitals, drop-ins, parties) are edited on the same page and saved
+  with the schedule. Past events drop off the website by themselves.
 - Every save keeps the previous version under the KV key `schedule:previous`.
 - `public/data/schedule.json` is the starter schedule, used until the first save.
 

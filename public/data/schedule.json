@@ -108,5 +108,6 @@
     "twice": 100,
     "once": 75,
     "registration": 30
-  }
+  },
+  "events": []
 }

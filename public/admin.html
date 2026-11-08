@@ -44,6 +44,46 @@
     <button type="button" class="ed-add" id="add-class">+ Add a class</button>
     <p class="ed-live"><a href="/schedule" target="_blank" rel="noopener">See the live schedule ↗</a></p>
 
+    <div class="admin-top ev-admin-top">
+      <h2 class="admin-h2">Events</h2>
+      <a class="link-btn" href="/events" target="_blank" rel="noopener">See events page ↗</a>
+    </div>
+    <p class="admin-sub">Workshops, recitals, drop-ins and parties. Past events disappear from the website by themselves.</p>
+    <div id="event-admin-list" class="ed-list"></div>
+    <button type="button" class="ed-add" id="add-event">+ Add an event</button>
+
+    <!-- edit one event -->
+    <dialog class="sheet" id="event-sheet" aria-labelledby="event-title-h">
+      <form method="dialog" class="sheet-inner" id="event-form">
+        <div class="sheet-grab" aria-hidden="true"></div>
+        <h2 id="event-title-h">New event</h2>
+        <p class="sheet-label" id="lbl-etype">Type</p>
+        <div class="chips" id="etype-chips" role="radiogroup" aria-labelledby="lbl-etype"></div>
+        <label class="sheet-label" for="ev-title">Name</label>
+        <input id="ev-title" class="sheet-input" type="text" maxlength="80" placeholder="e.g. Heels Workshop with Sam">
+        <div class="ev-row">
+          <div>
+            <label class="sheet-label" for="ev-date">Date</label>
+            <input id="ev-date" class="sheet-input" type="date">
+          </div>
+          <div>
+            <label class="sheet-label" for="ev-time">Time</label>
+            <select id="ev-time" class="sheet-select"></select>
+          </div>
+        </div>
+        <label class="sheet-label" for="ev-price">Price <span class="opt">(optional)</span></label>
+        <span class="money"><span>$</span><input id="ev-price" type="number" min="0" max="9999" inputmode="numeric" placeholder="–"></span>
+        <label class="sheet-label" for="ev-desc">Details <span class="opt">(optional)</span></label>
+        <textarea id="ev-desc" class="sheet-input" maxlength="400" rows="3" placeholder="What to bring, who it's for, how long it lasts…"></textarea>
+        <p class="sheet-error" id="event-error" role="alert"></p>
+        <div class="sheet-actions">
+          <button type="button" class="sheet-delete" id="event-delete">Delete</button>
+          <button type="button" class="sheet-cancel" id="event-cancel">Cancel</button>
+          <button type="submit" class="sheet-done" value="done">Done</button>
+        </div>
+      </form>
+    </dialog>
+
     <!-- edit one class -->
     <dialog class="sheet" id="class-sheet" aria-labelledby="sheet-title">
       <form method="dialog" class="sheet-inner" id="class-form">

@@ -129,6 +129,9 @@
       if (!byKey[key]) { byKey[key] = { id: nextId++, name: c.name, time: c.time, days: [] }; entries.push(byKey[key]); }
       if (byKey[key].days.indexOf(c.day) === -1) byKey[key].days.push(c.day);
     });
+    events = (data.events || []).map(function (e) {
+      return { id: nextId++, type: e.type, title: e.title, date: e.date, time: e.time || "", price: e.price != null ? e.price : "", description: e.description || "" };
+    });
     dirty = false;
     render();
     setMsg("All changes saved.", "");
@@ -215,6 +218,7 @@
       conflictsEl.appendChild(ul);
     }
     $("admin-sub").textContent = ($("month").value || "No month set") + " · Tap a class to change it.";
+    renderEvents();
     return conflicts;
   }
   var refresh = render;
@@ -338,7 +342,8 @@
   });
   undoBtn.addEventListener("click", function () {
     if (!undoState) return;
-    entries.splice(undoState.index, 0, undoState.entry);
+    if (undoState.restore) undoState.restore();
+    else entries.splice(undoState.index, 0, undoState.entry);
     undoState = null;
     undoBtn.hidden = true;
     markDirty();
@@ -353,6 +358,104 @@
     var bad = ["twice", "once", "registration"].some(function (k) { var v = $("price-" + k).value.trim(); return v !== "" && !/^\d{1,4}$/.test(v); });
     if (bad) { e.preventDefault(); $("settings-error").textContent = "Prices must be whole dollars, like 100."; }
     render();
+  });
+
+  // ---------- events ----------
+  var events = [];
+  var eventList = $("event-admin-list");
+  var eventSheet = $("event-sheet");
+  var editingEvent = null;
+
+  function renderEvents() {
+    eventList.textContent = "";
+    var today = S.localDateKey();
+    var sorted = events.slice().sort(function (a, b) { return (a.date + a.time).localeCompare(b.date + b.time); });
+    if (!sorted.length) {
+      eventList.appendChild(el("p", { class: "ed-empty", text: "No events yet. Tap “+ Add an event” to post a workshop, recital, drop-in or party." }));
+      return;
+    }
+    var group = el("div", { class: "ed-group" });
+    sorted.forEach(function (e) {
+      var type = S.eventType(e.type);
+      var past = e.date < today;
+      var when = S.formatDate(e.date, { weekday: "short", month: "short", day: "numeric" }) + (e.time ? " · " + S.formatTime(e.time) : "");
+      var item = el("button", { type: "button", class: "ed-item" + (past ? " is-past" : ""), "data-cat": type.cat }, [
+        el("span", { class: "ed-bar" }),
+        el("span", { class: "ed-text" }, [
+          el("span", { class: "ed-name", text: e.title }),
+          el("span", { class: "ed-when", text: type.label + " · " + when + (past ? " · past" : "") })
+        ]),
+        el("span", { class: "ed-chev", text: "›" })
+      ]);
+      item.addEventListener("click", function () { openEventSheet(e); });
+      group.appendChild(item);
+    });
+    eventList.appendChild(group);
+  }
+
+  function drawTypeChips() {
+    var holder = $("etype-chips");
+    holder.textContent = "";
+    S.EVENT_TYPES.forEach(function (t) {
+      var on = editingEvent.type === t.key;
+      var b = chip(t.label, on, t.cat);
+      b.setAttribute("role", "radio");
+      b.setAttribute("aria-checked", String(on));
+      b.addEventListener("click", function () { editingEvent.type = t.key; drawTypeChips(); });
+      holder.appendChild(b);
+    });
+  }
+
+  function openEventSheet(e) {
+    editingEvent = e ? Object.assign({}, e) : { id: null, type: "workshop", title: "", date: "", time: "", price: "", description: "" };
+    $("event-title-h").textContent = e ? "Change event" : "New event";
+    $("event-delete").hidden = !e;
+    $("event-error").textContent = "";
+    $("ev-title").value = editingEvent.title;
+    $("ev-date").value = editingEvent.date;
+    $("ev-date").min = e ? "" : S.localDateKey();
+    var t = $("ev-time");
+    t.textContent = "";
+    t.appendChild(el("option", { value: "", text: "No set time" }));
+    TIME_OPTIONS.forEach(function (x) { t.appendChild(el("option", { value: x, text: S.formatTime(x) })); });
+    if (editingEvent.time && TIME_OPTIONS.indexOf(editingEvent.time) === -1) t.appendChild(el("option", { value: editingEvent.time, text: S.formatTime(editingEvent.time) }));
+    t.value = editingEvent.time;
+    $("ev-price").value = editingEvent.price;
+    $("ev-desc").value = editingEvent.description;
+    drawTypeChips();
+    eventSheet.showModal();
+    eventSheet.querySelector(".sheet-inner").scrollTop = 0;
+  }
+
+  $("add-event").addEventListener("click", function () { openEventSheet(null); });
+  $("event-cancel").addEventListener("click", function () { eventSheet.close(); });
+  eventSheet.addEventListener("click", function (e) { if (e.target === eventSheet) eventSheet.close(); });
+
+  $("event-form").addEventListener("submit", function (ev) {
+    var title = $("ev-title").value.trim();
+    var date = $("ev-date").value;
+    var price = $("ev-price").value.trim();
+    var missing = !title ? "Give the event a name." : !date ? "Pick a date." :
+      (price && !/^\d{1,4}$/.test(price)) ? "Price must be whole dollars, like 25." : "";
+    if (missing) { ev.preventDefault(); $("event-error").textContent = missing; return; }
+    var saved = { id: editingEvent.id || nextId++, type: editingEvent.type, title: title, date: date,
+      time: $("ev-time").value, price: price === "" ? "" : Number(price), description: $("ev-desc").value.trim() };
+    var i = events.findIndex(function (x) { return x.id === saved.id; });
+    if (i === -1) events.push(saved); else events[i] = saved;
+    markDirty();
+  });
+
+  $("event-delete").addEventListener("click", function () {
+    var i = events.findIndex(function (x) { return x.id === editingEvent.id; });
+    if (i === -1) return;
+    var removed = events.splice(i, 1)[0];
+    eventSheet.close();
+    markDirty();
+    setMsg("Event removed.", "warn");
+    undoState = { restore: function () { events.splice(i, 0, removed); } };
+    undoBtn.hidden = false;
+    clearTimeout(undoTimer);
+    undoTimer = setTimeout(function () { undoBtn.hidden = true; undoState = null; }, 10000);
   });
 
   function markDirty() {
@@ -386,7 +489,14 @@
       if (!/^\d{1,4}$/.test(v)) { input.classList.add("has-error"); problem = problem || input; return; }
       prices[k] = Number(v);
     });
-    return { problem: problem, data: { month: $("month").value, note: $("note").value, prices: prices, classes: classes } };
+    var evs = events.map(function (e) {
+      var o = { type: e.type, title: e.title, date: e.date };
+      if (e.time) o.time = e.time;
+      if (e.price !== "" && e.price != null) o.price = Number(e.price);
+      if (e.description) o.description = e.description;
+      return o;
+    });
+    return { problem: problem, data: { month: $("month").value, note: $("note").value, prices: prices, events: evs, classes: classes } };
   }
 
   saveBtn.addEventListener("click", function () {
