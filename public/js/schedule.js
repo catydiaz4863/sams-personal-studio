@@ -78,9 +78,46 @@
       listEl.appendChild(el("section", { class: "day-card" + (isToday ? " is-today" : ""), "data-day": d.key }, [h, ul]));
     });
 
-    // Put today's card first on phones so people see what's on right now.
-    var todayCard = listEl.querySelector('[data-day="' + today + '"]');
-    if (todayCard) listEl.insertBefore(todayCard, listEl.firstChild);
+    // ---- phone day tabs: one day at a time, opens on today (or the next day with classes) ----
+    var order = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
+    var todayIdx = order.indexOf(today);
+    var tabs = el("div", { class: "day-tabs", role: "tablist", "aria-label": "Pick a day" });
+    var start = null;
+    for (var i = 0; i < 7 && !start; i++) {
+      var key = order[(todayIdx + i) % 7];
+      if (days.some(function (d) { return d.key === key; })) start = key;
+    }
+    days.forEach(function (d) {
+      // date of this weekday's next class, e.g. "9"
+      var ahead = (order.indexOf(d.key) - todayIdx + 7) % 7;
+      var date = new Date();
+      date.setDate(date.getDate() + ahead);
+      var tab = el("button", {
+        type: "button", role: "tab", class: "day-tab", "data-day": d.key,
+        "aria-selected": String(d.key === start), "aria-label": d.long
+      }, [
+        el("span", { class: "day-tab-name", text: d.key === today ? "Today" : d.short }),
+        el("span", { class: "day-tab-date", text: String(date.getDate()) })
+      ]);
+      tabs.appendChild(tab);
+    });
+    listEl.parentNode.insertBefore(tabs, listEl);
+
+    function showDay(key) {
+      tabs.querySelectorAll(".day-tab").forEach(function (t) {
+        var on = t.getAttribute("data-day") === key;
+        t.setAttribute("aria-selected", String(on));
+        if (on) tabs.scrollLeft = t.offsetLeft - tabs.clientWidth / 2 + t.offsetWidth / 2;
+      });
+      listEl.querySelectorAll(".day-card").forEach(function (card) {
+        card.classList.toggle("is-active", card.getAttribute("data-day") === key);
+      });
+    }
+    tabs.addEventListener("click", function (e) {
+      var t = e.target.closest(".day-tab");
+      if (t) showDay(t.getAttribute("data-day"));
+    });
+    showDay(start);
 
     // ---- desktop grid (rows = time slots, columns = days) ----
     var times = Array.from(new Set(classes.map(function (c) { return c.time; }))).sort();
