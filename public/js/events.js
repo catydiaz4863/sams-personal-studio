@@ -18,7 +18,6 @@
     ];
     if (e.description) body.push(el("p", { class: "ev-desc", text: e.description }));
     var foot = [el("a", { class: "btn btn-small btn-pink", href: signup, text: "Text to sign up" })];
-    if (e.video) foot.push(el("a", { class: "btn btn-small btn-ghost", href: e.video, target: "_blank", rel: "noopener", text: "▶ Watch the teaser" }));
     if (e.price != null) foot.unshift(el("span", { class: "ev-price", text: e.price === 0 ? "Free" : "$" + e.price }));
     body.push(el("div", { class: "ev-foot" }, foot));
 

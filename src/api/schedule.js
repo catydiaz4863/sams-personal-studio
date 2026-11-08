@@ -51,19 +51,6 @@ export async function onRequestPut({ request, env }) {
   return json(result.data);
 }
 
-// Only accept https links to the usual video sites.
-function videoLink(value) {
-  try {
-    const u = new URL(String(value).trim());
-    const host = u.hostname.replace(/^(www\.|m\.)/, "");
-    const ok = ["instagram.com", "youtube.com", "youtu.be", "tiktok.com", "facebook.com", "fb.watch"];
-    if (u.protocol !== "https:" || !ok.some((h) => host === h || host.endsWith("." + h))) return null;
-    return u.toString().slice(0, 300);
-  } catch {
-    return null;
-  }
-}
-
 function cleanText(value, max) {
   return String(value == null ? "" : value).replace(/\s+/g, " ").trim().slice(0, max);
 }
@@ -132,11 +119,7 @@ function validate(body) {
       if (!MEDIA_PATH.test(String(e.image))) return { error: `"${title}" has an invalid flyer image.` };
       ev.image = e.image;
     }
-    if (e.video) {
-      const v = videoLink(e.video);
-      if (!v) return { error: `"${title}": the video link must be from Instagram, YouTube, TikTok or Facebook.` };
-      ev.video = v;
-    }
+
     events.push(ev);
   }
   events.sort((a, b) => (a.date + (a.time || "")).localeCompare(b.date + (b.time || "")));

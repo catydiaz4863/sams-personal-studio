@@ -38,7 +38,7 @@ Pages are served at short addresses: `/schedule`, `/classes`, `/events`, `/about
   with the schedule. Past events drop off the website by themselves.
 - Event flyer images are shrunk in the browser (max 1600px) and stored in KV
   under `media:<id>`, served at `/media/<id>`. Images no event uses are deleted
-  on the next save. Video teasers are links (Instagram, YouTube, TikTok, Facebook).
+  on the next save.
 - Every save keeps the previous version under the KV key `schedule:previous`.
 - `public/data/schedule.json` is the starter schedule, used until the first save.
 

@@ -130,7 +130,7 @@
       if (byKey[key].days.indexOf(c.day) === -1) byKey[key].days.push(c.day);
     });
     events = (data.events || []).map(function (e) {
-      return { id: nextId++, type: e.type, title: e.title, date: e.date, time: e.time || "", price: e.price != null ? e.price : "", description: e.description || "", image: e.image || "", video: e.video || "" };
+      return { id: nextId++, type: e.type, title: e.title, date: e.date, time: e.time || "", price: e.price != null ? e.price : "", description: e.description || "", image: e.image || "" };
     });
     dirty = false;
     render();
@@ -384,7 +384,7 @@
         el("span", { class: "ed-text" }, [
           el("span", { class: "ed-name", text: e.title }),
           el("span", { class: "ed-when", text: type.label + " · " + when + (past ? " · past" : "") +
-            (e.image ? " · flyer" : "") + (e.video ? " · video" : "") })
+            (e.image ? " · flyer" : "") })
         ]),
         el("span", { class: "ed-chev", text: "›" })
       ]);
@@ -408,7 +408,7 @@
   }
 
   function openEventSheet(e) {
-    editingEvent = e ? Object.assign({}, e) : { id: null, type: "workshop", title: "", date: "", time: "", price: "", description: "", image: "", video: "" };
+    editingEvent = e ? Object.assign({}, e) : { id: null, type: "workshop", title: "", date: "", time: "", price: "", description: "", image: "" };
     $("event-title-h").textContent = e ? "Change event" : "New event";
     $("event-delete").hidden = !e;
     $("event-error").textContent = "";
@@ -423,7 +423,6 @@
     t.value = editingEvent.time;
     $("ev-price").value = editingEvent.price;
     $("ev-desc").value = editingEvent.description;
-    $("ev-video").value = editingEvent.video || "";
     $("ev-image-file").value = "";
     $("ev-image-status").textContent = "";
     showFlyer(editingEvent.image);
@@ -440,14 +439,6 @@
     if (url) img.src = url; else img.removeAttribute("src");
     $("ev-image-remove").hidden = !url;
     $("ev-image-label").textContent = url ? "Change flyer" : "Add a flyer";
-  }
-  function isVideoLink(v) {
-    try {
-      var u = new URL(v);
-      var host = u.hostname.replace(/^(www\.|m\.)/, "");
-      return u.protocol === "https:" && ["instagram.com", "youtube.com", "youtu.be", "tiktok.com", "facebook.com", "fb.watch"]
-        .some(function (h) { return host === h || host.slice(-h.length - 1) === "." + h; });
-    } catch (e) { return false; }
   }
   // Longest side 1600px, JPEG ~85%: a phone photo becomes ~200-400 KB.
   function shrinkImage(file) {
@@ -509,15 +500,13 @@
     var title = $("ev-title").value.trim();
     var date = $("ev-date").value;
     var price = $("ev-price").value.trim();
-    var video = $("ev-video").value.trim();
     var missing = uploading ? "Wait for the flyer to finish uploading." :
       !title ? "Give the event a name." : !date ? "Pick a date." :
-      (price && !/^\d{1,4}$/.test(price)) ? "Price must be whole dollars, like 25." :
-      (video && !isVideoLink(video)) ? "The video link should start with https:// and be from Instagram, YouTube, TikTok or Facebook." : "";
+      (price && !/^\d{1,4}$/.test(price)) ? "Price must be whole dollars, like 25." : "";
     if (missing) { ev.preventDefault(); $("event-error").textContent = missing; return; }
     var saved = { id: editingEvent.id || nextId++, type: editingEvent.type, title: title, date: date,
       time: $("ev-time").value, price: price === "" ? "" : Number(price), description: $("ev-desc").value.trim(),
-      image: editingEvent.image || "", video: video };
+      image: editingEvent.image || "" };
     var i = events.findIndex(function (x) { return x.id === saved.id; });
     if (i === -1) events.push(saved); else events[i] = saved;
     markDirty();
@@ -573,7 +562,6 @@
       if (e.price !== "" && e.price != null) o.price = Number(e.price);
       if (e.description) o.description = e.description;
       if (e.image) o.image = e.image;
-      if (e.video) o.video = e.video;
       return o;
     });
     return { problem: problem, data: { month: $("month").value, note: $("note").value, prices: prices, events: evs, classes: classes } };

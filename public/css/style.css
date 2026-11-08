@@ -1522,14 +1522,3 @@ dialog.sheet[open] { animation: sheet-up 0.22s ease-out; }
 .ev-flyer img { width: 100%; max-height: 460px; object-fit: contain; display: block; margin: 0 auto; }
 @media (max-width: 699px) { .ev-flyer { margin: -14px -14px 2px; } }
 .admin .file-btn { display: inline-flex; align-items: center; justify-content: center; margin: 0; padding: 0 16px; }
-.admin input[type="url"] {
-  width: 100%;
-  min-height: 50px;
-  padding: 10px 12px;
-  border: 2px solid var(--line);
-  border-radius: 10px;
-  background: #fff;
-  font: 500 1rem var(--font-body);
-  color: var(--ink);
-}
-.admin input[type="url"]:focus { border-color: var(--blue); outline: none; }
