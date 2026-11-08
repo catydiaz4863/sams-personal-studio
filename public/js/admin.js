@@ -68,6 +68,17 @@
   });
 
   // ---------- editor ----------
+  var CLASS_MINUTES = 60;          // used to spot classes that overlap
+  var OTHER = "__other";
+  var daybar = $("daybar");
+  var conflictsEl = $("conflicts");
+  var undoBtn = $("undo");
+  var settings = $("settings");
+  var activeDay = null;
+  var knownNames = [];
+  var undoState = null;
+  var undoTimer = null;
+
   function showEditor() {
     loginView.hidden = true;
     if (dirty) {
@@ -86,6 +97,13 @@
     });
   }
 
+  // "06:00" ... "22:00" every 15 minutes
+  var TIME_OPTIONS = [];
+  for (var m = 6 * 60; m <= 22 * 60; m += 15) {
+    TIME_OPTIONS.push(String(Math.floor(m / 60)).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0"));
+  }
+  function minutes(hhmm) { var p = hhmm.split(":"); return +p[0] * 60 + +p[1]; }
+
   function fillEditor(data) {
     $("month").value = data.month || "";
     $("note").value = data.note || "";
@@ -93,52 +111,199 @@
     $("price-twice").value = prices.twice;
     $("price-once").value = prices.once;
     $("price-registration").value = prices.registration;
+    settings.open = window.matchMedia("(min-width: 1000px)").matches;
 
-    var names = new Set(KNOWN_NAMES);
-    (data.classes || []).forEach(function (c) { names.add(c.name); });
-    var dl = $("class-names");
-    dl.textContent = "";
-    names.forEach(function (n) { dl.appendChild(el("option", { value: n })); });
+    var names = KNOWN_NAMES.slice();
+    (data.classes || []).forEach(function (c) { if (names.indexOf(c.name) === -1) names.push(c.name); });
+    knownNames = names;
 
     daysEl.textContent = "";
+    daybar.textContent = "";
     S.DAYS.forEach(function (d) {
       var rows = el("div", { class: "admin-rows" });
-      var addBtn = el("button", { type: "button", class: "btn btn-ghost btn-small", text: "+ Add a class" });
+      var addBtn = el("button", { type: "button", class: "add-class", text: "+ Add a class on " + d.long });
       addBtn.addEventListener("click", function () {
         var row = makeRow({ time: "", name: "" });
         rows.appendChild(row);
-        row.querySelector("input[type=time]").focus();
+        row.querySelector(".f-name").focus();
         markDirty();
       });
-      var card = el("section", { class: "admin-card admin-day", "data-day": d.key }, [
-        el("h3", { text: d.long }), rows, addBtn
+      var count = el("span", { class: "day-count" });
+      var panel = el("section", { class: "admin-card admin-day", "data-day": d.key }, [
+        el("h3", null, [el("span", { text: d.long }), count]), rows, addBtn
       ]);
       S.sortClasses((data.classes || []).filter(function (c) { return c.day === d.key; }))
         .forEach(function (c) { rows.appendChild(makeRow(c)); });
-      daysEl.appendChild(card);
+      daysEl.appendChild(panel);
+
+      var tab = el("button", { type: "button", role: "tab", class: "daybar-tab", "data-day": d.key }, [
+        el("span", { class: "daybar-name", text: d.short }),
+        el("span", { class: "daybar-count" })
+      ]);
+      tab.addEventListener("click", function () { showDay(d.key); });
+      daybar.appendChild(tab);
     });
 
+    // open on today, or the next day that has classes
+    if (!activeDay) {
+      var order = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
+      var t = order.indexOf(S.todayKey());
+      activeDay = S.todayKey();
+      for (var i = 0; i < 7; i++) {
+        var k = order[(t + i) % 7];
+        if ((data.classes || []).some(function (c) { return c.day === k; })) { activeDay = k; break; }
+      }
+    }
+    showDay(activeDay);
     dirty = false;
+    refresh();
     setMsg("All changes saved.", "");
   }
 
-  function makeRow(c) {
-    var time = el("input", { type: "time", value: c.time || "", "aria-label": "Start time", step: "300" });
-    var name = el("input", { type: "text", value: c.name || "", list: "class-names", maxlength: "60", "aria-label": "Class name", placeholder: "Class name" });
-    var swatch = el("span", { class: "swatch", "data-cat": S.categoryOf(c.name) });
-    var remove = el("button", { type: "button", class: "remove", "aria-label": "Remove this class", text: "✕" });
-    var row = el("div", { class: "admin-row" }, [time, el("div", { class: "name-wrap" }, [swatch, name]), remove]);
+  function showDay(key) {
+    activeDay = key;
+    daybar.querySelectorAll(".daybar-tab").forEach(function (t) {
+      t.setAttribute("aria-selected", String(t.getAttribute("data-day") === key));
+    });
+    daysEl.querySelectorAll(".admin-day").forEach(function (p) {
+      p.classList.toggle("is-active", p.getAttribute("data-day") === key);
+    });
+  }
 
-    name.addEventListener("input", function () { swatch.setAttribute("data-cat", S.categoryOf(name.value)); });
-    remove.addEventListener("click", function () { row.remove(); markDirty(); });
+  function nameOptions(select, current) {
+    select.textContent = "";
+    select.appendChild(el("option", { value: "", text: "Choose a class…" }));
+    knownNames.forEach(function (n) { select.appendChild(el("option", { value: n, text: n })); });
+    select.appendChild(el("option", { value: OTHER, text: "Other (type a name)…" }));
+    select.value = current && knownNames.indexOf(current) !== -1 ? current : (current ? OTHER : "");
+  }
+
+  function makeRow(c) {
+    var time = el("select", { class: "f-time", "aria-label": "Start time" });
+    time.appendChild(el("option", { value: "", text: "Time" }));
+    var times = TIME_OPTIONS.slice();
+    if (c.time && times.indexOf(c.time) === -1) { times.push(c.time); times.sort(); }
+    times.forEach(function (t) { time.appendChild(el("option", { value: t, text: S.formatTime(t) })); });
+    time.value = c.time || "";
+
+    var name = el("select", { class: "f-name", "aria-label": "Class" });
+    nameOptions(name, c.name);
+    var custom = el("input", { type: "text", class: "f-custom", maxlength: "60", placeholder: "New class name", "aria-label": "New class name" });
+    custom.hidden = name.value !== OTHER;
+    if (name.value === OTHER) custom.value = c.name || "";
+
+    var remove = el("button", { type: "button", class: "remove", "aria-label": "Remove this class" });
+    remove.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>';
+    var warn = el("p", { class: "row-warn", hidden: "" });
+
+    var row = el("div", { class: "admin-row", "data-cat": S.categoryOf(c.name) }, [
+      time, el("div", { class: "name-cell" }, [name, custom]), remove, warn
+    ]);
+
+    name.addEventListener("change", function () {
+      custom.hidden = name.value !== OTHER;
+      if (!custom.hidden) custom.focus();
+      row.setAttribute("data-cat", S.categoryOf(rowName(row)));
+    });
+    custom.addEventListener("input", function () { row.setAttribute("data-cat", S.categoryOf(custom.value)); });
+    time.addEventListener("change", function () { sortRows(row.parentNode); });
+    remove.addEventListener("click", function () { removeRow(row); });
     return row;
   }
 
+  function rowName(row) {
+    var sel = row.querySelector(".f-name");
+    return sel.value === OTHER ? row.querySelector(".f-custom").value.trim() : sel.value;
+  }
+
+  function sortRows(rows) {
+    if (!rows) return;
+    Array.from(rows.children)
+      .sort(function (a, b) {
+        var ta = a.querySelector(".f-time").value || "99", tb = b.querySelector(".f-time").value || "99";
+        return ta < tb ? -1 : ta > tb ? 1 : 0;
+      })
+      .forEach(function (r) { rows.appendChild(r); });
+  }
+
+  // Delete with a short "Undo" window in case of a mis-tap.
+  function removeRow(row) {
+    undoState = { row: row, parent: row.parentNode, next: row.nextSibling };
+    row.remove();
+    markDirty();
+    setMsg("Class removed.", "warn");
+    undoBtn.hidden = false;
+    clearTimeout(undoTimer);
+    undoTimer = setTimeout(function () { undoBtn.hidden = true; undoState = null; }, 8000);
+  }
+  undoBtn.addEventListener("click", function () {
+    if (!undoState) return;
+    undoState.parent.insertBefore(undoState.row, undoState.next);
+    undoState = null;
+    undoBtn.hidden = true;
+    markDirty();
+  });
+
+  // Counts, settings summary, and overlap warnings. Runs after every change.
+  function refresh() {
+    var conflicts = [];
+    daysEl.querySelectorAll(".admin-day").forEach(function (panel) {
+      var day = panel.getAttribute("data-day");
+      var rows = Array.from(panel.querySelectorAll(".admin-row"));
+      rows.forEach(function (r) {
+        r.classList.remove("has-conflict");
+        var w = r.querySelector(".row-warn"); w.hidden = true; w.textContent = "";
+      });
+      var filled = rows.filter(function (r) { return r.querySelector(".f-time").value && rowName(r); });
+      for (var i = 0; i < filled.length; i++) {
+        for (var j = i + 1; j < filled.length; j++) {
+          var a = filled[i], b = filled[j];
+          var ta = a.querySelector(".f-time").value, tb = b.querySelector(".f-time").value;
+          if (Math.abs(minutes(ta) - minutes(tb)) >= CLASS_MINUTES) continue;
+          var same = rowName(a) === rowName(b) && ta === tb;
+          [[a, b, tb], [b, a, ta]].forEach(function (x) {
+            x[0].classList.add("has-conflict");
+            var w = x[0].querySelector(".row-warn");
+            w.hidden = false;
+            w.textContent = same ? "This class is listed twice at the same time." :
+              (w.textContent ? w.textContent + " " : "") + "Overlaps " + rowName(x[1]) + " (" + S.formatTime(x[2]) + ").";
+          });
+          conflicts.push({ day: day, text: S.DAYS.filter(function (d) { return d.key === day; })[0].short + ": " +
+            rowName(a) + " " + S.formatTime(ta) + (same ? " is listed twice" : " overlaps " + rowName(b) + " " + S.formatTime(tb)) });
+        }
+      }
+      var n = rows.length;
+      panel.querySelector(".day-count").textContent = n ? n + (n === 1 ? " class" : " classes") : "";
+      var tab = daybar.querySelector('[data-day="' + day + '"]');
+      tab.querySelector(".daybar-count").textContent = n || "–";
+      tab.classList.toggle("has-conflict", panel.querySelector(".has-conflict") !== null);
+    });
+
+    conflictsEl.textContent = "";
+    conflictsEl.hidden = !conflicts.length;
+    if (conflicts.length) {
+      conflictsEl.appendChild(el("strong", { text: conflicts.length === 1 ? "1 time conflict" : conflicts.length + " time conflicts" }));
+      var ul = el("ul");
+      conflicts.forEach(function (c) {
+        var b = el("button", { type: "button", text: c.text });
+        b.addEventListener("click", function () { showDay(c.day); });
+        ul.appendChild(el("li", null, [b]));
+      });
+      conflictsEl.appendChild(ul);
+    }
+
+    var p = { twice: $("price-twice").value, once: $("price-once").value, reg: $("price-registration").value };
+    $("settings-summary").textContent = ($("month").value || "No title") + " · $" + p.twice + " / $" + p.once + " / $" + p.reg;
+    return conflicts;
+  }
+
   editorView.addEventListener("input", markDirty);
+  editorView.addEventListener("change", markDirty);
 
   function markDirty() {
     dirty = true;
     setMsg("You have unsaved changes.", "warn");
+    refresh();
   }
 
   function setMsg(text, kind) {
@@ -146,22 +311,30 @@
     saveMsg.className = kind || "";
   }
 
+  // Show a problem field: switch to its day (phones) or open the settings.
+  function reveal(node) {
+    var panel = node.closest(".admin-day");
+    if (panel) showDay(panel.getAttribute("data-day"));
+    if (node.closest("#settings")) settings.open = true;
+    node.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+
   function collect() {
     var classes = [];
     var problem = null;
-    daysEl.querySelectorAll(".admin-day").forEach(function (card) {
-      var day = card.getAttribute("data-day");
-      card.querySelectorAll(".admin-row").forEach(function (row) {
-        var time = row.querySelector("input[type=time]");
-        var name = row.querySelector("input[type=text]");
+    daysEl.querySelectorAll(".admin-day").forEach(function (panel) {
+      var day = panel.getAttribute("data-day");
+      panel.querySelectorAll(".admin-row").forEach(function (row) {
+        var time = row.querySelector(".f-time").value;
+        var name = rowName(row);
         row.classList.remove("has-error");
-        if (!name.value.trim() && !time.value) return; // empty row, skip
-        if (!name.value.trim() || !time.value) {
+        if (!name && !time) return; // empty row, skip
+        if (!name || !time) {
           row.classList.add("has-error");
           problem = problem || row;
           return;
         }
-        classes.push({ day: day, time: time.value, name: name.value.trim() });
+        classes.push({ day: day, time: time, name: name });
       });
     });
     var prices = {};
@@ -179,10 +352,16 @@
   saveBtn.addEventListener("click", function () {
     var result = collect();
     if (result.problem) {
-      setMsg("Each class needs a time and a name, and prices must be whole dollars.", "error");
-      result.problem.scrollIntoView({ behavior: "smooth", block: "center" });
+      setMsg("Each class needs a time and a class name, and prices must be whole dollars.", "error");
+      reveal(result.problem);
       return;
     }
+    var conflicts = refresh();
+    if (conflicts.length && !confirm("Some classes overlap:\n\n" +
+        conflicts.map(function (c) { return "• " + c.text; }).join("\n") + "\n\nSave anyway?")) {
+      return;
+    }
+    undoBtn.hidden = true;
     saveBtn.disabled = true;
     setMsg("Saving…", "");
     fetch("/api/schedule", {
@@ -214,8 +393,8 @@
     btn.addEventListener("click", function () {
       var result = collect();
       if (result.problem) {
-        flyerMsg.textContent = "Fix the highlighted class first (it needs a time and a name).";
-        result.problem.scrollIntoView({ behavior: "smooth", block: "center" });
+        flyerMsg.textContent = "Fix the highlighted class first (it needs a time and a class name).";
+        reveal(result.problem);
         return;
       }
       var format = btn.getAttribute("data-flyer");

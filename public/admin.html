@@ -34,38 +34,41 @@
   <!-- editor -->
   <section id="editor-view" hidden>
     <div class="admin-top">
-      <div>
-        <h1>Edit the schedule</h1>
-        <p class="lede">Change anything below, then press <strong>Save &amp; publish</strong>. The website updates right away.</p>
-      </div>
-      <a class="btn btn-ghost btn-small" href="/schedule" target="_blank" rel="noopener">View live schedule ↗</a>
+      <h1>Edit the schedule</h1>
+      <a class="admin-live" href="/schedule" target="_blank" rel="noopener">View live ↗</a>
     </div>
 
-    <div class="admin-card admin-fields">
-      <div>
-        <label for="month">Schedule title</label>
-        <input id="month" type="text" maxlength="40" placeholder="December 2026">
-        <p class="hint">Shown as the big heading, e.g. "December 2026".</p>
+    <details class="admin-card settings" id="settings">
+      <summary>
+        <span class="settings-title">Month, note &amp; prices</span>
+        <span class="settings-summary" id="settings-summary"></span>
+      </summary>
+      <div class="settings-body">
+        <div>
+          <label for="month">Schedule title</label>
+          <input id="month" type="text" maxlength="40" placeholder="December 2026">
+          <p class="hint">The big heading on the schedule, e.g. "December 2026".</p>
+        </div>
+        <div>
+          <label for="note">Registration note</label>
+          <textarea id="note" maxlength="300" rows="3" placeholder="New students: $30 one-time registration fee. Text us to save your spot."></textarea>
+          <p class="hint">Shown at the top of the schedule page.</p>
+        </div>
+        <div class="price-fields">
+          <label>Twice a week <span class="money"><span>$</span><input id="price-twice" type="number" min="0" max="9999" inputmode="numeric"></span><span class="hint">per class, per month</span></label>
+          <label>Once a week <span class="money"><span>$</span><input id="price-once" type="number" min="0" max="9999" inputmode="numeric"></span><span class="hint">per class, per month</span></label>
+          <label>Registration fee <span class="money"><span>$</span><input id="price-registration" type="number" min="0" max="9999" inputmode="numeric"></span><span class="hint">new students, one time</span></label>
+        </div>
       </div>
-      <div>
-        <label for="note">Registration note</label>
-        <textarea id="note" maxlength="300" rows="3" placeholder="New students: $30 one-time registration fee. Text us to save your spot."></textarea>
-        <p class="hint">Shown at the top of the schedule page.</p>
-      </div>
-    </div>
+    </details>
 
-    <h2 class="admin-h2">Prices</h2>
-    <div class="admin-card price-fields">
-      <label>Class twice a week <span class="money"><span>$</span><input id="price-twice" type="number" min="0" max="9999" inputmode="numeric"></span><span class="hint">per month</span></label>
-      <label>Class once a week <span class="money"><span>$</span><input id="price-once" type="number" min="0" max="9999" inputmode="numeric"></span><span class="hint">per month</span></label>
-      <label>Registration fee <span class="money"><span>$</span><input id="price-registration" type="number" min="0" max="9999" inputmode="numeric"></span><span class="hint">new students, one time</span></label>
+    <div class="classes-head">
+      <h2 class="admin-h2">Classes</h2>
+      <p class="hint">Classes are 1 hour. Overlaps are flagged in red.</p>
     </div>
-
-    <h2 class="admin-h2">Classes by day</h2>
-    <p class="hint" style="margin-top:-8px">Colors are picked automatically from the class name (anything with "Spin" is blue, "Belly" is green, and so on).</p>
+    <div class="conflict-box" id="conflicts" role="alert" hidden></div>
+    <div class="admin-daybar" id="daybar" role="tablist" aria-label="Pick a day to edit"></div>
     <div id="days" class="admin-days"></div>
-
-    <datalist id="class-names"></datalist>
 
     <h2 class="admin-h2">Social media image</h2>
     <div class="admin-card flyer-card">
@@ -86,6 +89,7 @@
 
     <div class="save-bar">
       <p id="save-msg" role="status">All changes saved.</p>
+      <button class="btn btn-small btn-ghost" id="undo" type="button" hidden>Undo</button>
       <button class="btn btn-pink" id="save" type="button">Save &amp; publish</button>
     </div>
   </section>
