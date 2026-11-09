@@ -42,6 +42,7 @@
     return Promise.all([api("/api/admin/surveys"), api("/api/schedule")]).then(function (res) {
       events = (res[1].events || []).filter(function (e) { return e.id; });
       surveys = res[0].surveys;
+      templates = res[0].templates || [];
       reviewOpen = surveys[0].open;
       return loadAllResponses();
     }).then(function () {
@@ -251,39 +252,71 @@
     });
   }
 
+  // ---------------- sharing + one-time links ----------------
+  var linkSurvey = null;
+  function shareSurvey(s) {
+    if (s.access !== "links") {
+      if (navigator.share) navigator.share({ title: s.title, url: linkFor(s) }).catch(function () {});
+      else copy(linkFor(s), "Link copied!");
+      return;
+    }
+    linkSurvey = s;
+    $("links-title").textContent = s.title;
+    $("links-out").textContent = "";
+    $("links-actions").hidden = true;
+    $("links-count").textContent = "";
+    $("links").showModal();
+    api("/api/admin/links?survey=" + encodeURIComponent(s.id)).then(function (c) {
+      $("links-count").textContent = c.open + " unused · " + c.used + " answered";
+    }).catch(function () {});
+  }
+  var madeLinks = [];
+  $("links-make").addEventListener("click", function () {
+    var n = Number($("links-n").value) || 1;
+    $("links-make").disabled = true;
+    api("/api/admin/links", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ survey: linkSurvey.id, count: n }) })
+      .then(function (b) {
+        madeLinks = b.links;
+        var out = $("links-out");
+        out.textContent = "";
+        b.links.forEach(function (l, i) {
+          var row = el("div", { class: "link-row", title: l }, [el("span", { text: "Link " + (i + 1) + " · …" + l.slice(-6) })]);
+          var c = el("button", { type: "button", class: "chip", text: "Copy" });
+          c.addEventListener("click", function () { copy(l, "Link " + (i + 1) + " copied"); c.textContent = "Copied ✓"; });
+          row.appendChild(c);
+          out.appendChild(row);
+        });
+        $("links-actions").hidden = false;
+        $("links-share").hidden = !(navigator.share && b.links.length === 1);
+      })
+      .catch(function (e) { msg(e.message); })
+      .then(function () { $("links-make").disabled = false; });
+  });
+  $("links-copyall").addEventListener("click", function () { copy(madeLinks.join("\n"), madeLinks.length + " links copied"); });
+  $("links-share").addEventListener("click", function () { navigator.share({ title: linkSurvey.title, url: madeLinks[0] }).catch(function () {}); });
+  $("links-close").addEventListener("click", function () { $("links").close(); });
+  $("links").addEventListener("click", function (e) { if (e.target === $("links")) $("links").close(); });
+
   // ---------------- templates ----------------
-  var TEMPLATES = [
-    { icon: "◆", tone: "orange", title: "Event feedback", intro: "Thanks for coming! Tell us how it went.", questions: [
-      { type: "stars", label: "How would you rate the event?", required: true },
-      { type: "multi", label: "What did you enjoy?", options: ["The instructor", "The music", "The choreography", "Meeting people", "The space"] },
-      { type: "choice", label: "Would you come to another one?", options: ["Definitely", "Maybe", "Probably not"], required: true },
-      { type: "long", label: "Anything we could do better?" }] },
-    { icon: "＋", tone: "pink", title: "What class should we add next?", intro: "Help us plan the next schedule.", questions: [
-      { type: "multi", label: "Which classes would you take?", options: ["Heels / exotic", "Spin pole advanced", "Flexibility & stretch", "Floorwork", "Belly dance level 2", "Choreography"], required: true },
-      { type: "long", label: "Any other ideas?" }] },
-    { icon: "◷", tone: "blue", title: "Best class times", intro: "We want to schedule classes when you can make it.", questions: [
-      { type: "multi", label: "Which days work for you?", options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"], required: true },
-      { type: "multi", label: "What times work for you?", options: ["Morning (before 12)", "Afternoon (12–5)", "Evening (after 5)"], required: true }] },
-    { icon: "✿", tone: "green", title: "New student check-in", intro: "Welcome to the studio! A few quick questions.", questions: [
-      { type: "choice", label: "Have you done pole or dance before?", options: ["Never", "A little", "Yes, a lot"], required: true },
-      { type: "multi", label: "What are your goals?", options: ["Get stronger", "Get flexible", "Have fun", "Build confidence", "Learn tricks", "Perform"] },
-      { type: "choice", label: "How did you hear about us?", options: ["Instagram", "Facebook", "Google", "A friend", "Walked or drove by", "Other"] },
-      { type: "long", label: "Any injuries or anything we should know?" }] }
-  ];
+  var templates = [];     // saved templates (Sam can edit / add)
   function openTemplates() {
     var list = $("tpl-list");
     list.textContent = "";
-    TEMPLATES.forEach(function (t) {
-      var b = el("button", { type: "button", class: "tpl" }, [
-        el("span", { class: "sv-icon " + t.tone, text: t.icon }),
-        el("span", { class: "tpl-text" }, [el("strong", { text: t.title }), el("span", { text: t.questions.length + " questions · " + t.intro })]),
-        el("span", { class: "ed-chev", text: "›" })
+    if (!templates.length) list.appendChild(el("p", { class: "dash-empty", text: "No templates yet. Make one below." }));
+    templates.forEach(function (t) {
+      var use = el("button", { type: "button", class: "tpl" }, [
+        el("span", { class: "sv-icon " + (t.tone || "blue"), text: t.icon || "✎" }),
+        el("span", { class: "tpl-text" }, [el("strong", { text: t.title }), el("span", { text: t.questions.length + (t.questions.length === 1 ? " question" : " questions") + (t.intro ? " · " + t.intro : "") })]),
+        el("span", { class: "tpl-use", text: "Use" })
       ]);
-      b.addEventListener("click", function () { $("templates").close(); openBuilder(null, t); });
-      list.appendChild(b);
+      use.addEventListener("click", function () { $("templates").close(); openBuilder(null, t); });
+      var edit = el("button", { type: "button", class: "tpl-edit", "aria-label": "Edit template " + t.title, text: "Edit" });
+      edit.addEventListener("click", function () { $("templates").close(); openBuilder(t, null, "template"); });
+      list.appendChild(el("div", { class: "tpl-row" }, [use, edit]));
     });
     $("templates").showModal();
   }
+  $("tpl-new").addEventListener("click", function () { $("templates").close(); openBuilder(null, null, "template"); });
   $("tpl-close").addEventListener("click", function () { $("templates").close(); });
   $("templates").addEventListener("click", function (e) { if (e.target === $("templates")) $("templates").close(); });
 
@@ -386,7 +419,7 @@
           el("span", { class: "sv-icon " + (s.kind === "review" ? "pink" : s.event ? "orange" : "blue"), text: s.kind === "review" ? "★" : s.event ? "◆" : "?" }),
           el("div", { class: "sv-card-text" }, [
             el("strong", { text: s.title }),
-            el("span", { text: (s.kind === "review" ? "Class reviews" : whereText(s)) + " · " + s.questions.length + (s.questions.length === 1 ? " question" : " questions") })
+            el("span", { text: (s.kind === "review" ? "Class reviews" : whereText(s)) + " · " + (s.access === "links" ? "One-time links" : "Open link, once per phone") })
           ]),
           el("span", { class: "sv-pill " + (s.open ? "on" : ""), text: s.open ? "Open" : "Closed" })
         ]),
@@ -399,10 +432,7 @@
       var actions = el("div", { class: "sv-card-actions" });
       function btn(label, fn, cls) { var b = el("button", { type: "button", class: cls || "", text: label }); b.addEventListener("click", fn); actions.appendChild(b); }
       btn("Results", function () { openResults(s); }, "is-main");
-      btn(navigator.share ? "Share" : "Copy link", function () {
-        if (navigator.share) navigator.share({ title: s.title, url: linkFor(s) }).catch(function () {});
-        else copy(linkFor(s), "Link copied!");
-      });
+      btn(s.access === "links" ? "Get links" : navigator.share ? "Share" : "Copy link", function () { shareSurvey(s); });
       btn("Edit", function () { openBuilder(s); });
       btn(s.open ? "Close" : "Open", function () { s.open = !s.open; saveSurveys(); });
       card.appendChild(actions);
@@ -424,9 +454,11 @@
     return api("/api/admin/surveys", {
       method: "PUT", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ reviewOpen: reviewS ? reviewS.open : true, surveys: custom,
-        review: reviewS ? { title: reviewS.title, intro: reviewS.intro, questions: reviewS.questions } : null })
+        review: reviewS ? { title: reviewS.title, intro: reviewS.intro, questions: reviewS.questions, access: reviewS.access } : null,
+        templates: templates })
     }).then(function (body) {
       surveys = body.surveys;
+      templates = body.templates || templates;
       surveys.forEach(function (x) { cache[x.id] = cache[x.id] || []; });
       renderSurveys();
       msg("Saved.");
@@ -550,30 +582,55 @@
     var act = b.getAttribute("data-act");
     if (act === "new") openBuilder(null);
     if (act === "templates") openTemplates();
-    if (act === "share") {
-      var link = location.origin + "/survey?id=review";
-      if (navigator.share) navigator.share({ title: "How was your class?", url: link }).catch(function () {});
-      else copy(link, "Review link copied!");
-    }
+    if (act === "share") shareSurvey(surveys[0]);
     if (act === "export") { resultsSurvey = surveys[0]; exportCsv(); }
     if (act === "review-results") openResults(surveys[0]);
   });
   $("b-cancel").addEventListener("click", function () { $("builder").close(); });
   $("builder").addEventListener("click", function (e) { if (e.target === $("builder")) $("builder").close(); });
 
-  function openBuilder(s, template) {
-    draft = s ? JSON.parse(JSON.stringify(s)) : template ? Object.assign({ id: "", kind: "custom", open: true, event: "" }, JSON.parse(JSON.stringify(template))) : { id: "", kind: "custom", title: "", intro: "", open: true, event: "", questions: [{ type: "choice", label: "", options: [], required: true }] };
-    draft.questions.forEach(function (q) { if (q.type === "text" && q.long) q.type = "long"; });
-    $("b-title").textContent = s ? "Edit survey" : "New survey";
+  var builderMode = "survey";   // "survey" or "template"
+  function openBuilder(s, template, mode) {
+    builderMode = mode || "survey";
+    var base = { id: "", kind: "custom", title: "", intro: "", open: true, event: "", access: "links", questions: [{ type: "choice", label: "", options: [], required: true }] };
+    if (builderMode === "template") draft = Object.assign(base, s ? JSON.parse(JSON.stringify(s)) : {});
+    else if (s) draft = JSON.parse(JSON.stringify(s));
+    else if (template) { var t = JSON.parse(JSON.stringify(template)); draft = Object.assign(base, { title: t.title, intro: t.intro, questions: t.questions }); }
+    else draft = base;
+    if (!draft.access) draft.access = "anyone";
+    var editingSurvey = !!s && builderMode === "survey";
+    draft.questions.forEach(function (q) {
+      if (q.type === "text" && q.long) q.type = "long";
+      if (!editingSurvey) delete q.id;   // a fresh copy gets new question ids
+    });
+    var isTpl = builderMode === "template";
+    $("b-title").textContent = isTpl ? (s ? "Edit template" : "New template") : s ? "Edit survey" : "New survey";
+    $("b-submit").textContent = isTpl ? "Save template" : "Publish";
+    $("b-access-wrap").hidden = isTpl;
+    drawAccess();
     $("b-name").value = draft.title;
     $("b-intro").value = draft.intro || "";
     $("b-delete").hidden = !s || draft.kind === "review";
-    $("b-where-wrap").hidden = draft.kind === "review";
+    $("b-where-wrap").hidden = draft.kind === "review" || isTpl;
     $("b-review-note").hidden = draft.kind !== "review";
     drawWhere();
     $("b-error").textContent = "";
     drawQuestions();
     $("builder").showModal();
+  }
+
+  // Who can answer: one-time links (recommended) or anyone, once per phone
+  function drawAccess() {
+    var holder = $("b-access");
+    holder.textContent = "";
+    [["links", "One-time links (recommended)"], ["anyone", "Anyone with the link"]].forEach(function (o) {
+      var b = el("button", { type: "button", class: "chip", "aria-pressed": String(draft.access === o[0]), text: o[1] });
+      b.addEventListener("click", function () { draft.access = o[0]; drawAccess(); if (draft.kind !== "review") drawWhere(); });
+      holder.appendChild(b);
+    });
+    $("b-access-hint").textContent = draft.access === "links"
+      ? "You send each person their own link. Each link works once, so nobody can answer twice."
+      : "One shared link. Each phone can answer once" + (draft.kind === "review" ? ", and \u201cLeave a review\u201d buttons show on class cards." : ".");
   }
 
   // Where the survey shows: general link, or on one event's card
@@ -593,7 +650,7 @@
     chip("General (just a link)", "");
     list.forEach(function (e) { chip((e.date < today ? "Past: " : "") + eventText(e), e.id); });
     $("b-where-hint").textContent = draft.event
-      ? "A button to this survey shows on that event's card, and for 2 weeks after the event."
+      ? (draft.access === "links" ? "Linked to this event in your results. (One-time-link surveys don't show a public button; send links to attendees.)" : "A button to this survey shows on that event's card, and for 2 weeks after the event.")
       : list.length ? "Only people with the link can answer it." : "Only people with the link can answer it. Add events on the Schedule page to attach surveys to them.";
   }
 
@@ -660,7 +717,7 @@
     e.preventDefault();
     draft.title = $("b-name").value.trim();
     draft.intro = $("b-intro").value.trim();
-    if (!draft.title) { $("b-error").textContent = "Give the survey a title."; return; }
+    if (!draft.title) { $("b-error").textContent = builderMode === "template" ? "Give the template a name." : "Give the survey a title."; return; }
     var out = JSON.parse(JSON.stringify(draft));
     out.questions = out.questions.filter(function (q) { return q.label.trim(); }).map(function (q) {
       var long = q.type === "long";
@@ -673,18 +730,35 @@
     });
     if (!out.questions.length) { $("b-error").textContent = "Add at least one question."; return; }
     out.event = draft.event || "";
+    out.access = draft.access || "anyone";
     var bad = out.questions.filter(function (q) { return (q.type === "choice" || q.type === "multi") && q.options.length < 2; })[0];
     if (bad) { $("b-error").textContent = "“" + bad.label + "” needs at least 2 options (one per line)."; return; }
+    if (builderMode === "template") {
+      var tpl = { id: draft.id || "", icon: draft.icon || "✎", tone: draft.tone || ["pink", "blue", "orange", "green"][templates.length % 4], title: out.title, intro: out.intro, questions: out.questions.map(function (q) { delete q.id; return q; }) };
+      var ti = templates.findIndex(function (t) { return draft.id && t.id === draft.id; });
+      var beforeT = templates.slice();
+      if (ti === -1) templates.push(tpl); else templates[ti] = tpl;
+      saveSurveys().then(function () { $("builder").close(); msg(ti === -1 ? "Template saved." : "Template updated."); openTemplates(); })
+        .catch(function (err) { templates = beforeT; $("b-error").textContent = err.message; });
+      return;
+    }
     var i = surveys.findIndex(function (s) { return draft.id && s.id === draft.id; });
     var before = surveys.slice();
     if (i === -1) surveys.push(out); else surveys[i] = out;
     saveSurveys().then(function () {
       $("builder").close();
-      msg(i === -1 ? "Survey created. Tap Copy link to share it." : "Survey saved.");
+      msg(i === -1 ? (out.access === "links" ? "Survey created. Tap Get links to send it." : "Survey created. Tap Share to send it.") : "Survey saved.");
     }).catch(function (err) { surveys = before; $("b-error").textContent = err.message; });
   });
 
   $("b-delete").addEventListener("click", function () {
+    if (builderMode === "template") {
+      if (!confirm("Delete this template?")) return;
+      var beforeT = templates.slice();
+      templates = templates.filter(function (t) { return t.id !== draft.id; });
+      saveSurveys().then(function () { $("builder").close(); msg("Template deleted."); openTemplates(); }).catch(function () { templates = beforeT; });
+      return;
+    }
     if (!confirm("Delete this survey? Its link will stop working.")) return;
     var before = surveys.slice();
     surveys = surveys.filter(function (s) { return s.id !== draft.id; });

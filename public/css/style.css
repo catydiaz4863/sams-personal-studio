@@ -1930,3 +1930,16 @@ button.stat { cursor: pointer; }
   color: var(--ink-soft); font: 700 0.95rem var(--font-body); cursor: pointer;
 }
 .dash-tabs button[aria-pressed="true"] { background: var(--card); color: var(--ink); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12); }
+/* templates: use + edit */
+.tpl-row { display: grid; grid-template-columns: 1fr auto; gap: 6px; }
+.tpl-use { font: 700 0.85rem var(--font-body); color: var(--pink-ink); }
+.tpl-edit { padding: 0 14px; border: 0; border-radius: 16px; background: #f3eee9; color: var(--ink); font: 700 0.88rem var(--font-body); cursor: pointer; }
+/* one-time links */
+.links-make-row { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; margin: 12px 0; }
+.links-make-row .sheet-select { min-height: 42px; }
+.links-out { display: grid; gap: 6px; max-height: 40vh; overflow-y: auto; }
+.link-row { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 12px; background: #faf7f3; font-size: 0.82rem; }
+.link-row span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.link-row .chip { min-height: 34px; font-size: 0.82rem; }
+.links-actions { display: flex; gap: 8px; margin-top: 10px; }
+.links-out { grid-template-columns: minmax(0, 1fr); }

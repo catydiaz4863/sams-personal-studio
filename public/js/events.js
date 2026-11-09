@@ -48,7 +48,7 @@
     fetch("/api/survey-links").then(function (r) { return r.ok ? r.json() : []; }).catch(function () { return []; })
   ]).then(function (res) {
     var data = res[0];
-    (res[1] || []).forEach(function (sv) { (surveyFor[sv.event] = surveyFor[sv.event] || []).push(sv); });
+    ((res[1] && res[1].links) || []).forEach(function (sv) { (surveyFor[sv.event] = surveyFor[sv.event] || []).push(sv); });
     var events = S.upcomingEvents(data);
     // events from the last 2 weeks that have a feedback survey
     var today = S.localDateKey();

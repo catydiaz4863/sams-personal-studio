@@ -74,7 +74,7 @@
 
     <!-- REVIEWS -->
     <div class="dash-panel" data-panel="reviews" hidden>
-      <p class="dash-sub">Nothing shows on the website until you approve it. ★ Feature puts it on the homepage.</p>
+      <p class="dash-sub">Only reviews with written words (a comment or a name) wait for you here. Star ratings without words count right away, and private answers never show on the website. ★ Feature puts a review on the homepage.</p>
       <div class="chips rv-filter" id="rv-filter">
         <button type="button" class="chip" data-f="new" aria-pressed="true">To approve <span id="n-new"></span></button>
         <button type="button" class="chip" data-f="approved" aria-pressed="false">Approved <span id="n-approved"></span></button>
@@ -110,15 +110,45 @@
   </div>
 </dialog>
 
+<!-- one-time links -->
+<dialog class="sheet" id="links" aria-labelledby="links-title">
+  <div class="sheet-inner">
+    <div class="sheet-grab" aria-hidden="true"></div>
+    <h2 id="links-title" tabindex="-1" autofocus>Get links</h2>
+    <p class="dash-sub">Each link works <strong>once</strong>. Send one to each person (text, DM or email).</p>
+    <p class="dash-note" id="links-count"></p>
+    <div class="links-make-row">
+      <label class="sheet-label" for="links-n" style="margin:0">How many?</label>
+      <select id="links-n" class="sheet-select">
+        <option value="1">1 link</option>
+        <option value="5">5 links</option>
+        <option value="10">10 links</option>
+        <option value="25">25 links</option>
+        <option value="50">50 links</option>
+      </select>
+      <button type="button" class="pill-btn" id="links-make">Create</button>
+    </div>
+    <div id="links-out" class="links-out"></div>
+    <div class="links-actions" id="links-actions" hidden>
+      <button type="button" class="chip" id="links-copyall">Copy all</button>
+      <button type="button" class="chip" id="links-share" hidden>Share</button>
+    </div>
+    <div class="sheet-actions">
+      <button type="button" class="sheet-done" id="links-close" style="flex:1">Done</button>
+    </div>
+  </div>
+</dialog>
+
 <!-- templates -->
 <dialog class="sheet" id="templates" aria-labelledby="tpl-title">
   <div class="sheet-inner">
     <div class="sheet-grab" aria-hidden="true"></div>
     <h2 id="tpl-title" tabindex="-1" autofocus>Start from a template</h2>
-    <p class="dash-sub">Pick one, then change anything you like before publishing.</p>
+    <p class="dash-sub">Tap a template to start a survey from it, or Edit to change the template itself.</p>
     <div id="tpl-list" class="tpl-list"></div>
     <div class="sheet-actions">
-      <button type="button" class="sheet-cancel" id="tpl-close" style="flex:1">Cancel</button>
+      <button type="button" class="sheet-cancel" id="tpl-close">Close</button>
+      <button type="button" class="sheet-done" id="tpl-new">＋ New template</button>
     </div>
   </div>
 </dialog>
@@ -133,6 +163,11 @@
     <label class="sheet-label" for="b-intro">Description <span class="opt">(optional)</span></label>
     <textarea id="b-intro" class="sheet-input" rows="2" maxlength="300" placeholder="e.g. Takes 1 minute. Thank you!"></textarea>
     <p class="hint bq-review-note" id="b-review-note" hidden>This is your class review. The first questions are built in. Add your own below; tick <strong>Private</strong> for answers only you should see.</p>
+    <div id="b-access-wrap">
+      <p class="sheet-label">Who can answer?</p>
+      <div class="chips" id="b-access"></div>
+      <p class="hint" id="b-access-hint"></p>
+    </div>
     <div id="b-where-wrap">
       <p class="sheet-label">Where does this survey go?</p>
       <div class="chips" id="b-where"></div>
@@ -147,7 +182,7 @@
     <div class="sheet-actions">
       <button type="button" class="sheet-delete" id="b-delete">Delete</button>
       <button type="button" class="sheet-cancel" id="b-cancel">Cancel</button>
-      <button type="submit" class="sheet-done">Publish</button>
+      <button type="submit" class="sheet-done" id="b-submit">Publish</button>
     </div>
   </form>
 </dialog>

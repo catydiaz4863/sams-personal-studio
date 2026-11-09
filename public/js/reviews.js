@@ -23,8 +23,14 @@
       .slice(0, n);
   }
 
-  // Every class card gets a "Leave a review" link even before reviews load.
+  // Every class card gets a "Leave a review" link (hidden if the review
+  // survey is closed or uses one-time links).
   var cards = document.querySelectorAll(".class-card");
+  fetch("/api/survey-links").then(function (r) { return r.json(); }).then(function (d) {
+    if (d && d.reviewPublic === false) {
+      document.querySelectorAll(".rv-link, #reviews-strip .events-head a").forEach(function (a) { a.hidden = true; });
+    }
+  }).catch(function () {});
   cards.forEach(function (card) {
     var name = card.querySelector("h3").textContent.trim();
     var row = el("div", { class: "rv-row" }, [

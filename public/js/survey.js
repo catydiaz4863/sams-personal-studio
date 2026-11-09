@@ -6,16 +6,19 @@
   var el = S.el;
   var params = new URLSearchParams(location.search);
   var id = params.get("id") || "review";
+  var token = params.get("t") || "";
   var root = document.getElementById("survey");
   var started = Date.now();
   var answers = {};
   var survey = null;
 
-  fetch("/api/survey?id=" + encodeURIComponent(id), { cache: "no-store" })
+  fetch("/api/survey?id=" + encodeURIComponent(id) + (token ? "&t=" + encodeURIComponent(token) : ""), { cache: "no-store" })
     .then(function (r) { return r.json(); })
     .then(function (data) {
       if (data.error) return message("Survey not found", "This link doesn't match a survey. Check the link and try again.");
       if (data.closed) return message(data.title || "Survey closed", "This survey isn't taking answers anymore. Thank you!");
+      if (data.done) return message("Already answered 💕", "Thanks! This survey was already answered from this link or phone.");
+      if (data.invalid) return message("Link not valid", "This survey needs a personal link from the studio. Text us and we'll send you one.");
       survey = data;
       render();
     })
@@ -136,23 +139,23 @@
       fetch("/api/survey", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: survey.id, answers: answers, website: hp.value, ms: Date.now() - started })
+        body: JSON.stringify({ id: survey.id, t: token, answers: answers, website: hp.value, ms: Date.now() - started })
       })
         .then(function (r) { return r.json().then(function (b) { return { ok: r.ok, body: b }; }); })
         .then(function (res) {
           if (!res.ok) throw new Error(res.body.error || "Couldn't send. Try again.");
-          thanks();
+          thanks(res.body.needsOk);
         })
         .catch(function (x) { err.textContent = x.message; btn.disabled = false; btn.textContent = "Send"; });
     });
     root.appendChild(form);
   }
 
-  function thanks() {
+  function thanks(needsOk) {
     root.textContent = "";
     var box = el("div", { class: "sv-done" }, [
       el("h1", { text: "Thank you! 💕" }),
-      el("p", { text: survey.kind === "review" ? "Your review was sent to Sam. Once approved, it shows up on the website." : "Your answers were sent to the studio." })
+      el("p", { text: survey.kind !== "review" ? "Your answers were sent to the studio." : needsOk ? "Your review was sent to Sam. Once approved, it shows up on the website." : "Your rating is in and helps other students find their class." })
     ]);
     box.appendChild(el("div", { class: "hero-actions" }, [
       el("a", { class: "btn btn-pink", href: "/schedule", text: "See the schedule" }),

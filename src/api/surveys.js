@@ -35,6 +35,27 @@ export const REVIEW = {
   ],
 };
 
+// Starter templates; once Sam edits templates, his saved list is used.
+const DEFAULT_TEMPLATES = [
+  { id: "t-event", icon: "◆", tone: "orange", title: "Event feedback", intro: "Thanks for coming! Tell us how it went.", questions: [
+    { type: "stars", label: "How would you rate the event?", required: true },
+    { type: "multi", label: "What did you enjoy?", options: ["The instructor", "The music", "The choreography", "Meeting people", "The space"] },
+    { type: "choice", label: "Would you come to another one?", options: ["Definitely", "Maybe", "Probably not"], required: true },
+    { type: "text", long: true, label: "Anything we could do better?" }] },
+  { id: "t-next", icon: "＋", tone: "pink", title: "What class should we add next?", intro: "Help us plan the next schedule.", questions: [
+    { type: "multi", label: "Which classes would you take?", options: ["Heels / exotic", "Spin pole advanced", "Flexibility & stretch", "Floorwork", "Belly dance level 2", "Choreography"], required: true },
+    { type: "text", long: true, label: "Any other ideas?" }] },
+  { id: "t-times", icon: "◷", tone: "blue", title: "Best class times", intro: "We want to schedule classes when you can make it.", questions: [
+    { type: "multi", label: "Which days work for you?", options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"], required: true },
+    { type: "multi", label: "What times work for you?", options: ["Morning (before 12)", "Afternoon (12–5)", "Evening (after 5)"], required: true }] },
+  { id: "t-new", icon: "✿", tone: "green", title: "New student check-in", intro: "Welcome to the studio! A few quick questions.", questions: [
+    { type: "choice", label: "Have you done pole or dance before?", options: ["Never", "A little", "Yes, a lot"], required: true },
+    { type: "multi", label: "What are your goals?", options: ["Get stronger", "Get flexible", "Have fun", "Build confidence", "Learn tricks", "Perform"] },
+    { type: "choice", label: "How did you hear about us?", options: ["Instagram", "Facebook", "Google", "A friend", "Walked or drove by", "Other"] },
+    { type: "text", long: true, label: "Any injuries or anything we should know?" }] },
+];
+const TONES = ["pink", "blue", "orange", "green"];
+
 // ---------- helpers ----------
 function clean(v, max) {
   return String(v == null ? "" : v).replace(/\s+/g, " ").trim().slice(0, max);
@@ -53,6 +74,21 @@ export function displayName(raw) {
   return parts.length > 1 ? `${cap(parts[0])} ${parts[parts.length - 1].charAt(0).toUpperCase()}.` : cap(parts[0]);
 }
 
+function cookieDone(request) {
+  const m = (request.headers.get("Cookie") || "").match(/(?:^|;\s*)svd=([^;]+)/);
+  return m ? decodeURIComponent(m[1]).split(".").filter(Boolean) : [];
+}
+function doneCookie(request, ids) {
+  const secure = new URL(request.url).protocol === "https:" ? "; Secure" : "";
+  return `svd=${encodeURIComponent(ids.slice(-40).join("."))}; Path=/; HttpOnly; SameSite=Lax; Max-Age=31536000${secure}`;
+}
+const TOKEN = /^[a-z0-9]{16,40}$/;
+async function tokenState(env, sid, token) {
+  if (!TOKEN.test(String(token || ""))) return "invalid";
+  const v = await env.SCHEDULE_KV.get(`tok:${sid}:${token}`);
+  return v === "open" ? "open" : v === "used" ? "used" : "invalid";
+}
+
 async function loadCustom(env) {
   const raw = await env.SCHEDULE_KV.get("surveys");
   return raw ? JSON.parse(raw) : { reviewOpen: true, surveys: [] };
@@ -65,6 +101,7 @@ async function allSurveys(env) {
     title: r.title || REVIEW.title,
     intro: r.intro != null ? r.intro : REVIEW.intro,
     questions: r.questions || REVIEW.questions,
+    access: r.access === "links" ? "links" : "anyone",
     open: saved.reviewOpen !== false,
   };
   return [review, ...saved.surveys];
@@ -171,6 +208,14 @@ export const survey = {
     const s = (await allSurveys(env)).find((x) => x.id === id);
     if (!s) return json({ error: "This survey doesn't exist." }, { status: 404 });
     if (!s.open) return json({ closed: true, title: s.title });
+    const url = new URL(request.url);
+    if (s.access === "links") {
+      const st = await tokenState(env, s.id, url.searchParams.get("t"));
+      if (st === "used") return json({ done: true, title: s.title });
+      if (st !== "open") return json({ invalid: true, title: s.title });
+    } else if (cookieDone(request).includes(s.id)) {
+      return json({ done: true, title: s.title });
+    }
     const body = { id: s.id, kind: s.kind || "custom", title: s.title, intro: s.intro || "", questions: s.questions };
     if (s.event) {
       const ev = (await loadEvents(env, request)).find((e) => e.id === s.event);
@@ -194,21 +239,40 @@ export const survey = {
 
     const s = (await allSurveys(env)).find((x) => x.id === body.id);
     if (!s || !s.open) return json({ error: "This survey is closed." }, { status: 404 });
+    const done = cookieDone(request);
+    if (s.access === "links") {
+      const st = await tokenState(env, s.id, body.t);
+      if (st === "used") return json({ error: "This link was already used. Each link works once." }, { status: 409 });
+      if (st !== "open") return json({ error: "This survey link isn't valid. Ask the studio for a new one." }, { status: 403 });
+    } else if (done.includes(s.id)) {
+      return json({ error: "You've already answered this survey. Thank you!" }, { status: 409 });
+    }
     const classes = s.questions.some((q) => q.type === "class") ? await classOptions(env, request) : [];
     const result = validateAnswers(s, body.answers, classes);
     if (result.error) return json({ error: result.error }, { status: 400 });
 
+    // Use up the one-time link before saving, so it can't be reused.
+    if (s.access === "links") await env.SCHEDULE_KV.put(`tok:${s.id}:${body.t}`, "used", { expirationTtl: 60 * 60 * 24 * 365, metadata: { used: 1 } });
     await env.SCHEDULE_KV.put(key, String(n + 1), { expirationTtl: 3600 });
-    await putResponse(env, { id: newId(), s: s.id, t: Date.now(), a: result.answers, st: "new", f: false });
-    return json({ ok: true });
+
+    // Reviews only need Sam's OK when they include words people typed
+    // (a comment or a name). Stars and tags alone go live right away.
+    const needsOk = s.kind === "review" && !!(result.answers.comment || result.answers.name);
+    const status = s.kind === "review" && !needsOk ? "approved" : "new";
+    await putResponse(env, { id: newId(), s: s.id, t: Date.now(), a: result.answers, st: status, f: false });
+    if (s.kind === "review" && status === "approved") await rebuildPublic(env);
+
+    const headers = s.access === "links" ? {} : { "Set-Cookie": doneCookie(request, done.concat(s.id)) };
+    return json({ ok: true, needsOk }, { headers });
   },
 };
 
 // GET /api/survey-links -> open surveys that belong to an event
 export const surveyLinks = {
   async onRequestGet({ env }) {
-    const list = (await allSurveys(env)).filter((s) => s.open && s.event).map((s) => ({ id: s.id, title: s.title, event: s.event }));
-    return json(list);
+    const all = await allSurveys(env);
+    const list = all.filter((s) => s.open && s.event && s.access !== "links").map((s) => ({ id: s.id, title: s.title, event: s.event }));
+    return json({ links: list, reviewPublic: all[0].open && all[0].access !== "links" });
   },
 };
 
@@ -278,7 +342,8 @@ function validateSurveys(list) {
     const v = validateQuestions(s.questions, title, false);
     if (v.error) return v;
     const event = /^[a-z0-9]{6,24}$/.test(String(s.event || "")) ? s.event : "";
-    out.push({ id, kind: "custom", title, intro: clean(s.intro, 300), open: s.open !== false, event, questions: v.questions, created: s.created || Date.now() });
+    out.push({ id, kind: "custom", title, intro: clean(s.intro, 300), open: s.open !== false, event,
+      access: s.access === "links" ? "links" : "anyone", questions: v.questions, created: s.created || Date.now() });
   }
   return { surveys: out };
 }
@@ -289,7 +354,8 @@ export const adminSurveys = {
   async onRequestGet({ request, env }) {
     const denied = await guard(request, env, false);
     if (denied) return denied;
-    return json({ surveys: await allSurveys(env) });
+    const saved = await loadCustom(env);
+    return json({ surveys: await allSurveys(env), templates: saved.templates || DEFAULT_TEMPLATES });
   },
   async onRequestPut({ request, env }) {
     const denied = await guard(request, env, true);
@@ -304,10 +370,26 @@ export const adminSurveys = {
       const title = clean(body.review.title, 80) || REVIEW.title;
       const v = validateQuestions(body.review.questions, title, true);
       if (v.error) return json({ error: v.error }, { status: 400 });
-      review = { title, intro: clean(body.review.intro, 300), questions: v.questions };
+      review = { title, intro: clean(body.review.intro, 300), questions: v.questions, access: body.review.access === "links" ? "links" : "anyone" };
     }
-    await env.SCHEDULE_KV.put("surveys", JSON.stringify({ reviewOpen: body.reviewOpen !== false, review, surveys: result.surveys }));
-    return json({ surveys: await allSurveys(env) });
+    let templates = saved.templates;
+    if (Array.isArray(body.templates)) {
+      if (body.templates.length > 30) return json({ error: "Too many templates." }, { status: 400 });
+      templates = [];
+      for (const t of body.templates) {
+        const title = clean(t && t.title, 80);
+        if (!title) return json({ error: "Every template needs a title." }, { status: 400 });
+        const v = validateQuestions(t.questions, title, false);
+        if (v.error) return json({ error: v.error }, { status: 400 });
+        templates.push({
+          id: /^[a-z0-9-]{2,30}$/.test(String(t.id || "")) ? t.id : "t-" + newId(),
+          icon: clean(t.icon, 2) || "✎", tone: TONES.includes(t.tone) ? t.tone : "blue",
+          title, intro: clean(t.intro, 300), questions: v.questions.map(({ id, ...q }) => q),
+        });
+      }
+    }
+    await env.SCHEDULE_KV.put("surveys", JSON.stringify({ reviewOpen: body.reviewOpen !== false, review, surveys: result.surveys, templates }));
+    return json({ surveys: await allSurveys(env), templates: templates || DEFAULT_TEMPLATES });
   },
 };
 
@@ -342,5 +424,40 @@ export const adminResponses = {
     }
     if (sid === "review") await rebuildPublic(env);
     return json({ ok: true });
+  },
+};
+
+// POST /api/admin/links  { survey, count }  -> one-time links
+// GET  /api/admin/links?survey=id          -> how many are still unused
+export const adminLinks = {
+  async onRequestGet({ request, env }) {
+    const denied = await guard(request, env, false);
+    if (denied) return denied;
+    const sid = new URL(request.url).searchParams.get("survey") || "";
+    if (!/^[a-z0-9-]{1,40}$/.test(sid)) return json({ error: "Bad survey id" }, { status: 400 });
+    let open = 0, used = 0, cursor;
+    do {
+      const page = await env.SCHEDULE_KV.list({ prefix: `tok:${sid}:`, cursor });
+      for (const k of page.keys) (k.metadata && k.metadata.used ? used++ : open++);
+      cursor = page.list_complete ? null : page.cursor;
+    } while (cursor);
+    return json({ open, used });
+  },
+  async onRequestPost({ request, env }) {
+    const denied = await guard(request, env, true);
+    if (denied) return denied;
+    let body;
+    try { body = await request.json(); } catch { return json({ error: "Bad request" }, { status: 400 }); }
+    const s = (await allSurveys(env)).find((x) => x.id === body.survey);
+    if (!s) return json({ error: "That survey doesn't exist." }, { status: 404 });
+    const count = Math.max(1, Math.min(50, parseInt(body.count, 10) || 1));
+    const origin = new URL(request.url).origin;
+    const links = [];
+    for (let i = 0; i < count; i++) {
+      const t = crypto.randomUUID().replace(/-/g, "").slice(0, 20);
+      await env.SCHEDULE_KV.put(`tok:${s.id}:${t}`, "open", { expirationTtl: 60 * 60 * 24 * 180, metadata: { used: 0 } });
+      links.push(`${origin}/survey?id=${encodeURIComponent(s.id)}&t=${t}`);
+    }
+    return json({ links });
   },
 };
