@@ -1522,3 +1522,128 @@ dialog.sheet[open] { animation: sheet-up 0.22s ease-out; }
 .ev-flyer img { width: 100%; max-height: 460px; object-fit: contain; display: block; margin: 0 auto; }
 @media (max-width: 699px) { .ev-flyer { margin: -14px -14px 2px; } }
 .admin .file-btn { display: inline-flex; align-items: center; justify-content: center; margin: 0; padding: 0 16px; }
+
+/* event panel: date + time fit on every phone (Safari's date box ignores
+   its column width unless told otherwise) */
+.ev-row > div { min-width: 0; }
+.admin input[type="date"] {
+  -webkit-appearance: none;
+  appearance: none;
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  text-align: left;
+}
+.admin input[type="date"]::-webkit-date-and-time-value { text-align: left; }
+.date-wrap { position: relative; }
+.date-hint {
+  display: none;
+  position: absolute;
+  left: 14px; top: 50%;
+  transform: translateY(-50%);
+  color: #9a929f;
+  font: 500 1rem var(--font-body);
+  pointer-events: none;
+}
+.date-wrap.is-empty .date-hint { display: block; }
+.date-wrap.is-empty input[type="date"] { color: transparent; }
+.date-wrap.is-empty input[type="date"]:focus { color: var(--ink); }
+.date-wrap.is-empty input[type="date"]:focus + .date-hint { display: none; }
+@media (max-width: 520px) {
+  .ev-row { grid-template-columns: 1fr; gap: 0; }
+}
+/* the panel title takes focus when it opens; no ring needed there */
+.sheet h2:focus { outline: none; }
+/* price boxes match the other fields */
+.admin .money input {
+  min-height: 50px;
+  padding: 10px 12px;
+  border: 2px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  font: 700 1.05rem var(--font-body);
+  color: var(--ink);
+}
+.admin .money input:focus { border-color: var(--blue); outline: none; }
+
+/* =================================================================
+   Less crowded on phones
+   ================================================================= */
+.ev-list .ev-mini { display: flex; }
+.ev-mini {
+  align-items: center;
+  gap: 14px;
+  padding: 12px 14px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  color: var(--ink);
+  text-decoration: none;
+}
+.ev-mini:hover { color: var(--ink); border-color: var(--ink); }
+.ev-mini-date {
+  display: grid; place-items: center;
+  width: 50px; padding: 6px 0;
+  border-radius: 10px;
+  background: var(--cat-tint);
+  line-height: 1.05;
+  flex: none;
+}
+.ev-mini-date span { font: 800 0.7rem var(--font-body); text-transform: uppercase; color: var(--cat-ink); letter-spacing: 0.06em; }
+.ev-mini-date strong { font: 800 1.35rem var(--font-display); }
+.ev-mini-text { flex: 1; min-width: 0; display: grid; }
+.ev-mini-text strong { font-size: 1rem; }
+.ev-mini-text span { font-size: 0.88rem; color: var(--ink-soft); }
+#home-event-list { gap: 10px; }
+
+/* party: tags instead of paragraphs */
+.party { display: block; max-width: 640px; }
+.party p { margin-bottom: 14px; }
+.party-tags { list-style: none; margin: 0 0 18px; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.party-tags li { padding: 7px 12px; border-radius: 999px; background: var(--green-tint); font-weight: 700; font-size: 0.9rem; }
+
+/* event card details: two lines max */
+.ev-desc {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+@media (max-width: 699px) {
+  /* hero */
+  .hero { padding: 14px 0 24px; }
+  .hero-art img { max-width: 190px; }
+  .hero .eyebrow { display: none; }
+  .hero h1 { font-size: 2.1rem; margin-bottom: 0.3em; }
+  .hero-grid { gap: 10px; }
+  .hero-actions { margin-top: 16px; }
+
+  /* today box: next 3 classes only */
+  .today { padding: 16px 14px; margin-top: 20px; }
+  .today-head { margin-bottom: 10px; }
+  .today-head h2 { font-size: 1.2rem; }
+  .today-list li:nth-child(n+4) { display: none; }
+  .today-list li { padding: 9px 12px; }
+
+  /* sections breathe more, say less */
+  .section { padding: 40px 0; }
+  .section h2 { font-size: 1.7rem; }
+  .eyebrow { margin-bottom: 4px; }
+  .steps li { padding: 12px 0; }
+  .steps p { font-size: 0.95rem; }
+  .pricing { margin-top: 12px; }
+  .price-fee { font-size: 0.92rem; margin-top: 10px; }
+  .panel { min-height: 150px; }
+  .panel h3 { margin-bottom: 2px; }
+
+  /* events page */
+  .page-head { padding: 22px 0 12px; }
+  .page-head h1 { font-size: 2rem; }
+  .ev-foot { margin-top: 6px; }
+  .dropin-note { font-size: 0.92rem; padding: 12px 14px; }
+}
+@media (max-width: 699px) {
+  .footer-inner > div:first-child p:not(.footer-brand) { display: none; }
+  .site-footer li { margin-bottom: 2px; }
+}

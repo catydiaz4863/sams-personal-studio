@@ -415,6 +415,7 @@
     $("ev-title").value = editingEvent.title;
     $("ev-date").value = editingEvent.date;
     $("ev-date").min = e ? "" : S.localDateKey();
+    syncDateHint();
     var t = $("ev-time");
     t.textContent = "";
     t.appendChild(el("option", { value: "", text: "No set time" }));
@@ -491,6 +492,13 @@
     showFlyer("");
     $("ev-image-status").textContent = "Flyer removed.";
   });
+
+  // iPhone date boxes show nothing until a date is picked; show a hint instead.
+  function syncDateHint() {
+    $("ev-date").closest(".date-wrap").classList.toggle("is-empty", !$("ev-date").value);
+  }
+  $("ev-date").addEventListener("input", syncDateHint);
+  $("ev-date").addEventListener("change", syncDateHint);
 
   $("add-event").addEventListener("click", function () { openEventSheet(null); });
   $("event-cancel").addEventListener("click", function () { eventSheet.close(); });
