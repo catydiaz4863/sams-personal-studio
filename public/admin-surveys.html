@@ -8,7 +8,7 @@
 <link rel="icon" href="/img/icon.png">
 <link rel="stylesheet" href="/css/style.css">
 </head>
-<body class="admin">
+<body class="admin dash">
 <header class="site-header">
   <div class="stripe" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
   <div class="wrap header-inner">
@@ -25,25 +25,74 @@
     <a class="btn btn-pink" href="/admin">Go to log in</a>
   </section>
 
-  <section id="app" class="sv-admin" hidden>
-    <div class="admin-top"><h1>Reviews &amp; surveys</h1></div>
-
-    <!-- reviews to approve -->
-    <div class="admin-top"><h2 class="admin-h2">Class reviews</h2></div>
-    <p class="admin-sub">Nothing shows on the website until you approve it. ★ Feature puts a review on the homepage.</p>
-    <div class="chips rv-filter" id="rv-filter" role="tablist">
-      <button type="button" class="chip" data-f="new" aria-pressed="true">To approve <span id="n-new"></span></button>
-      <button type="button" class="chip" data-f="approved" aria-pressed="false">Approved <span id="n-approved"></span></button>
-      <button type="button" class="chip" data-f="hidden" aria-pressed="false">Hidden <span id="n-hidden"></span></button>
+  <section id="app" class="dash-app" hidden>
+    <div class="dash-head">
+      <div>
+        <h1>Insights</h1>
+        <p class="dash-sub">Reviews and surveys from your students</p>
+      </div>
+      <select id="range" class="dash-range" aria-label="Time range">
+        <option value="30">Last 30 days</option>
+        <option value="90">Last 3 months</option>
+        <option value="all">All time</option>
+      </select>
     </div>
-    <div id="rv-admin-list" class="rva-list"></div>
 
-    <!-- surveys -->
-    <div class="admin-top" style="margin-top:36px"><h2 class="admin-h2">Surveys</h2></div>
-    <p class="admin-sub">Every survey has its own link. Share it like a Google Form: text it, post it, put it in your Instagram bio.</p>
-    <div id="survey-list" class="ed-group"></div>
-    <button type="button" class="ed-add" id="new-survey">+ New survey</button>
-    <p class="form-msg" id="sv-msg" role="status"></p>
+    <div class="view-toggle dash-tabs" role="tablist">
+      <button type="button" data-tab="overview" aria-pressed="true">Overview</button>
+      <button type="button" data-tab="reviews" aria-pressed="false">Reviews <span class="tab-badge" id="badge"></span></button>
+      <button type="button" data-tab="surveys" aria-pressed="false">Surveys</button>
+    </div>
+
+    <!-- OVERVIEW -->
+    <div class="dash-panel" data-panel="overview">
+      <div class="stat-grid" id="stats"></div>
+
+      <h2 class="dash-h">Quick actions</h2>
+      <div class="quick">
+        <button type="button" class="quick-btn is-main" data-act="new"><span class="qi">＋</span>New survey</button>
+        <button type="button" class="quick-btn" data-act="templates"><span class="qi">❏</span>Templates</button>
+        <button type="button" class="quick-btn" data-act="share"><span class="qi">↗</span>Share review</button>
+        <button type="button" class="quick-btn" data-act="export"><span class="qi">⇩</span>Export</button>
+      </div>
+
+      <div class="dash-card">
+        <div class="dash-card-head"><h2 class="dash-h">Responses over time</h2><span class="dash-note" id="trend-note"></span></div>
+        <div id="trend"></div>
+      </div>
+
+      <div class="dash-card">
+        <div class="dash-card-head"><h2 class="dash-h">How people found us</h2><span class="dash-note" id="heard-note"></span></div>
+        <div id="heard"></div>
+      </div>
+
+      <div class="dash-card">
+        <div class="dash-card-head"><h2 class="dash-h">Classes by rating</h2><button type="button" class="link-btn" data-act="review-results">Details</button></div>
+        <div id="top-classes"></div>
+      </div>
+    </div>
+
+    <!-- REVIEWS -->
+    <div class="dash-panel" data-panel="reviews" hidden>
+      <p class="dash-sub">Nothing shows on the website until you approve it. ★ Feature puts it on the homepage.</p>
+      <div class="chips rv-filter" id="rv-filter">
+        <button type="button" class="chip" data-f="new" aria-pressed="true">To approve <span id="n-new"></span></button>
+        <button type="button" class="chip" data-f="approved" aria-pressed="false">Approved <span id="n-approved"></span></button>
+        <button type="button" class="chip" data-f="hidden" aria-pressed="false">Hidden <span id="n-hidden"></span></button>
+      </div>
+      <div id="rv-admin-list" class="rva-list"></div>
+    </div>
+
+    <!-- SURVEYS -->
+    <div class="dash-panel" data-panel="surveys" hidden>
+      <div class="quick quick-2">
+        <button type="button" class="quick-btn is-main" data-act="new"><span class="qi">＋</span>New survey</button>
+        <button type="button" class="quick-btn" data-act="templates"><span class="qi">❏</span>From a template</button>
+      </div>
+      <div id="survey-list" class="sv-cards"></div>
+    </div>
+
+    <p class="dash-toast" id="sv-msg" role="status"></p>
   </section>
 </main>
 
@@ -52,15 +101,24 @@
   <div class="sheet-inner">
     <div class="sheet-grab" aria-hidden="true"></div>
     <h2 id="res-title" tabindex="-1" autofocus>Results</h2>
-    <div class="chips" id="res-range">
-      <button type="button" class="chip" data-r="all" aria-pressed="true">All time</button>
-      <button type="button" class="chip" data-r="30" aria-pressed="false">Last 30 days</button>
-      <button type="button" class="chip" data-r="90" aria-pressed="false">Last 3 months</button>
-    </div>
+    <p class="dash-sub" id="res-where"></p>
     <div id="res-body"></div>
     <div class="sheet-actions">
-      <button type="button" class="sheet-cancel" id="res-csv">Download spreadsheet</button>
+      <button type="button" class="sheet-cancel" id="res-csv">Export spreadsheet</button>
       <button type="button" class="sheet-done" id="res-close">Close</button>
+    </div>
+  </div>
+</dialog>
+
+<!-- templates -->
+<dialog class="sheet" id="templates" aria-labelledby="tpl-title">
+  <div class="sheet-inner">
+    <div class="sheet-grab" aria-hidden="true"></div>
+    <h2 id="tpl-title" tabindex="-1" autofocus>Start from a template</h2>
+    <p class="dash-sub">Pick one, then change anything you like before publishing.</p>
+    <div id="tpl-list" class="tpl-list"></div>
+    <div class="sheet-actions">
+      <button type="button" class="sheet-cancel" id="tpl-close" style="flex:1">Cancel</button>
     </div>
   </div>
 </dialog>
@@ -70,24 +128,26 @@
   <form method="dialog" class="sheet-inner" id="b-form">
     <div class="sheet-grab" aria-hidden="true"></div>
     <h2 id="b-title" tabindex="-1" autofocus>New survey</h2>
-    <label class="sheet-label" for="b-name">Title</label>
+    <label class="sheet-label" for="b-name">Survey title</label>
     <input id="b-name" class="sheet-input" type="text" maxlength="80" placeholder="e.g. What class should we add next?">
-    <label class="sheet-label" for="b-intro">Short intro <span class="opt">(optional)</span></label>
-    <input id="b-intro" class="sheet-input" type="text" maxlength="300" placeholder="e.g. Takes 1 minute. Thank you!">
+    <label class="sheet-label" for="b-intro">Description <span class="opt">(optional)</span></label>
+    <textarea id="b-intro" class="sheet-input" rows="2" maxlength="300" placeholder="e.g. Takes 1 minute. Thank you!"></textarea>
     <p class="hint bq-review-note" id="b-review-note" hidden>This is your class review. The first questions are built in. Add your own below; tick <strong>Private</strong> for answers only you should see.</p>
     <div id="b-where-wrap">
       <p class="sheet-label">Where does this survey go?</p>
       <div class="chips" id="b-where"></div>
       <p class="hint" id="b-where-hint"></p>
     </div>
-    <p class="sheet-label">Questions</p>
+    <div class="b-q-head">
+      <p class="sheet-label">Questions</p>
+      <button type="button" class="pill-btn" id="b-add">＋ Add</button>
+    </div>
     <div id="b-questions" class="bq-list"></div>
-    <button type="button" class="add-class" id="b-add">+ Add a question</button>
     <p class="sheet-error" id="b-error" role="alert"></p>
     <div class="sheet-actions">
       <button type="button" class="sheet-delete" id="b-delete">Delete</button>
       <button type="button" class="sheet-cancel" id="b-cancel">Cancel</button>
-      <button type="submit" class="sheet-done">Save survey</button>
+      <button type="submit" class="sheet-done">Publish</button>
     </div>
   </form>
 </dialog>

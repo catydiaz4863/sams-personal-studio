@@ -24,7 +24,14 @@
         return res.body;
       });
   }
-  function msg(t) { $("sv-msg").textContent = t || ""; }
+  var toastTimer = null;
+  function msg(t) {
+    var box = $("sv-msg");
+    box.textContent = t || "";
+    box.classList.toggle("show", !!t);
+    clearTimeout(toastTimer);
+    if (t) toastTimer = setTimeout(function () { box.classList.remove("show"); }, 3500);
+  }
   function showLogin() { $("loading").hidden = true; $("app").hidden = true; $("need-login").hidden = false; }
   function linkFor(s) { return location.origin + "/survey?id=" + encodeURIComponent(s.id); }
   function fmtDate(t) { return new Date(t).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }); }
@@ -32,18 +39,253 @@
 
   fetch("/api/session", { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (s) {
     if (!s.loggedIn) return showLogin();
-    return Promise.all([api("/api/admin/surveys"), api("/api/admin/responses?survey=review"), api("/api/schedule")]).then(function (res) {
-      events = (res[2].events || []).filter(function (e) { return e.id; });
+    return Promise.all([api("/api/admin/surveys"), api("/api/schedule")]).then(function (res) {
+      events = (res[1].events || []).filter(function (e) { return e.id; });
       surveys = res[0].surveys;
       reviewOpen = surveys[0].open;
-      reviews = res[1].responses;
-      cache.review = reviews;
+      return loadAllResponses();
+    }).then(function () {
+      reviews = cache.review || [];
       $("loading").hidden = true;
       $("app").hidden = false;
-      renderReviews();
-      renderSurveys();
+      renderAll();
     });
   }).catch(function (e) { $("loading").textContent = e.message || "Couldn't load. Refresh the page."; });
+
+  // ---------------- data + range ----------------
+  var range = "30";
+  function loadAllResponses() {
+    return Promise.all(surveys.map(function (s) {
+      return api("/api/admin/responses?survey=" + encodeURIComponent(s.id)).then(function (b) { cache[s.id] = b.responses; });
+    }));
+  }
+  function withinRange(list, offsetDays) {
+    if (range === "all") return offsetDays ? [] : list;
+    var days = Number(range), now = Date.now(), off = (offsetDays || 0) * 864e5;
+    return list.filter(function (r) { return r.t >= now - off - days * 864e5 && r.t < now - off; });
+  }
+  function rangeLabel() { return range === "all" ? "all time" : range === "30" ? "last 30 days" : "last 3 months"; }
+  function allResponses() {
+    var out = [];
+    surveys.forEach(function (s) { out = out.concat(cache[s.id] || []); });
+    return out;
+  }
+  $("range").addEventListener("change", function () { range = this.value; renderAll(); });
+
+  function renderAll() { renderOverview(); renderReviews(); renderSurveys(); }
+
+  // ---------------- tabs ----------------
+  document.querySelector(".dash-tabs").addEventListener("click", function (e) {
+    var b = e.target.closest("[data-tab]");
+    if (b) showTab(b.getAttribute("data-tab"));
+  });
+  function showTab(name) {
+    document.querySelectorAll(".dash-tabs [data-tab]").forEach(function (b) { b.setAttribute("aria-pressed", String(b.getAttribute("data-tab") === name)); });
+    document.querySelectorAll(".dash-panel").forEach(function (p) { p.hidden = p.getAttribute("data-panel") !== name; });
+    window.scrollTo(0, 0);
+  }
+
+  // ---------------- small chart helpers (plain SVG) ----------------
+  var NS = "http://www.w3.org/2000/svg";
+  function svg(tag, attrs) {
+    var n = document.createElementNS(NS, tag);
+    Object.keys(attrs || {}).forEach(function (k) { n.setAttribute(k, attrs[k]); });
+    return n;
+  }
+  // progress ring, value 0..1
+  function ring(value, color) {
+    var r = 15, c = 2 * Math.PI * r;
+    var s = svg("svg", { viewBox: "0 0 40 40", class: "ring", "aria-hidden": "true" });
+    s.appendChild(svg("circle", { cx: 20, cy: 20, r: r, fill: "none", stroke: "rgba(23,19,26,0.1)", "stroke-width": 4 }));
+    var v = Math.max(0, Math.min(1, value || 0));
+    s.appendChild(svg("circle", { cx: 20, cy: 20, r: r, fill: "none", stroke: color, "stroke-width": 4, "stroke-linecap": "round",
+      "stroke-dasharray": (v * c) + " " + c, transform: "rotate(-90 20 20)" }));
+    var t = svg("text", { x: 20, y: 23.5, "text-anchor": "middle", class: "ring-text" });
+    t.textContent = Math.round(v * 100) + "%";
+    s.appendChild(t);
+    return s;
+  }
+
+  // responses per week (or per day for 30 days), as rounded bars
+  function trendChart(list) {
+    var days = range === "all" ? Math.max(28, Math.ceil((Date.now() - Math.min.apply(null, list.map(function (r) { return r.t; }).concat([Date.now()]))) / 864e5) + 1) : Number(range);
+    var step = days <= 31 ? 7 : days <= 120 ? 7 : 30;
+    var n = Math.min(26, Math.ceil(days / step));
+    var now = Date.now();
+    var buckets = [];
+    for (var i = n - 1; i >= 0; i--) {
+      var end = now - i * step * 864e5, start = end - step * 864e5;
+      buckets.push({ start: start, count: list.filter(function (r) { return r.t >= start && r.t < end; }).length });
+    }
+    var max = Math.max(1, Math.max.apply(null, buckets.map(function (b) { return b.count; })));
+    var W = window.innerWidth >= 700 ? 680 : 320, H = 130, pad = 18, bw = (W - 8) / n;
+    var s = svg("svg", { viewBox: "0 0 " + W + " " + (H + pad), class: "trend", role: "img", "aria-label": "Responses over time" });
+    [0.5, 1].forEach(function (f) {
+      s.appendChild(svg("line", { x1: 0, x2: W, y1: H - f * (H - 16), y2: H - f * (H - 16), class: "grid" }));
+    });
+    buckets.forEach(function (b, i) {
+      var h = b.count ? Math.max(6, b.count / max * (H - 16)) : 3;
+      var x = 4 + i * bw + bw * 0.18, w = bw * 0.64;
+      var last = i === n - 1;
+      var rect = svg("rect", { x: x, y: H - h, width: w, height: h, rx: Math.min(6, w / 2), class: last ? "bar now" : "bar" });
+      var title = svg("title", {});
+      title.textContent = b.count + " responses, week of " + new Date(b.start).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+      rect.appendChild(title);
+      s.appendChild(rect);
+      if (b.count && (last || b.count === max)) {
+        var t = svg("text", { x: x + w / 2, y: H - h - 5, "text-anchor": "middle", class: "bar-val" });
+        t.textContent = b.count;
+        s.appendChild(t);
+      }
+      if (i === 0 || i === n - 1 || (n > 6 && i === Math.floor(n / 2))) {
+        var l = svg("text", { x: x + w / 2, y: H + 14, "text-anchor": "middle", class: "axis" });
+        l.textContent = new Date(b.start + step * 864e5).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+        s.appendChild(l);
+      }
+    });
+    return el("div", { class: "trend-wrap" }, [s]);
+  }
+
+  // ---------------- overview ----------------
+  var HEARD_COLORS = ["var(--pink)", "var(--blue)", "var(--orange)", "var(--green)", "#8a7f92", "#c9c1ba"];
+
+  function statCard(o) {
+    var card = o.onClick ? el("button", { class: "stat " + (o.tone || ""), type: "button" }) : el("div", { class: "stat " + (o.tone || "") });
+    card.appendChild(el("div", { class: "stat-top" }, [el("span", { class: "stat-icon", text: o.icon }), o.ring || el("span")]));
+    card.appendChild(el("span", { class: "stat-label", text: o.label }));
+    card.appendChild(el("span", { class: "stat-value" }, [document.createTextNode(o.value), el("small", { text: o.unit || "" })]));
+    if (o.note) card.appendChild(el("span", { class: "stat-note " + (o.noteTone || ""), text: o.note }));
+    if (o.onClick) card.addEventListener("click", o.onClick);
+    return card;
+  }
+
+  function renderOverview() {
+    var all = allResponses();
+    var now = withinRange(all), before = withinRange(all, Number(range) || 0);
+    var revNow = withinRange(cache.review || []);
+    var stars = revNow.map(function (r) { return r.a.stars; }).filter(function (v) { return typeof v === "number"; });
+    var avg = stars.length ? stars.reduce(function (a, b) { return a + b; }, 0) / stars.length : 0;
+    var rec = revNow.map(function (r) { return r.a.recommend; }).filter(function (v) { return typeof v === "number"; });
+    var nps = rec.length ? Math.round((rec.filter(function (v) { return v >= 9; }).length - rec.filter(function (v) { return v <= 6; }).length) / rec.length * 100) : null;
+    var waiting = (cache.review || []).filter(function (r) { return r.st === "new"; }).length;
+
+    var change = null;
+    if (range !== "all") {
+      if (before.length) change = Math.round((now.length - before.length) / before.length * 100);
+      else if (now.length) change = 100;
+    }
+
+    var grid = $("stats");
+    grid.textContent = "";
+    grid.appendChild(statCard({
+      icon: "✎", label: "Responses", value: String(now.length), unit: " " + (range === "all" ? "total" : "in " + range + " days"),
+      note: change === null ? "All surveys" : (change >= 0 ? "▲ " : "▼ ") + Math.abs(change) + "% vs previous",
+      noteTone: change === null ? "" : change >= 0 ? "up" : "down", tone: "pink"
+    }));
+    grid.appendChild(statCard({
+      icon: "★", label: "Average rating", value: avg ? avg.toFixed(1) : "–", unit: " / 5",
+      note: stars.length + (stars.length === 1 ? " review" : " reviews"), ring: ring(avg / 5, "#f5a623")
+    }));
+    grid.appendChild(statCard({
+      icon: "♥", label: "Would recommend", value: nps === null ? "–" : (nps > 0 ? "+" : "") + nps, unit: nps === null ? "" : " score",
+      note: nps === null ? "No answers yet" : (nps >= 50 ? "Excellent" : nps > 0 ? "Good" : "Needs attention"),
+      noteTone: nps === null ? "" : nps > 0 ? "up" : "down",
+      ring: ring(rec.length ? rec.filter(function (v) { return v >= 9; }).length / rec.length : 0, "var(--green-ink)")
+    }));
+    grid.appendChild(statCard({
+      icon: "✓", label: "Reviews to approve", value: String(waiting), unit: "",
+      note: waiting ? "Tap to review" : "All caught up", tone: waiting ? "dark" : "",
+      onClick: function () { filter = "new"; renderReviews(); showTab("reviews"); }
+    }));
+
+    // trend
+    var trend = $("trend");
+    trend.textContent = "";
+    $("trend-note").textContent = rangeLabel();
+    if (!all.length) trend.appendChild(el("p", { class: "dash-empty", text: "No responses yet. Share your review link to get started." }));
+    else trend.appendChild(trendChart(now.length || range === "all" ? now : all.slice(0, 0)));
+
+    // how people found us (review survey's "heard" question)
+    var heardBox = $("heard");
+    heardBox.textContent = "";
+    var heard = {};
+    revNow.forEach(function (r) { if (r.a.heard) heard[r.a.heard] = (heard[r.a.heard] || 0) + 1; });
+    var keys = Object.keys(heard).sort(function (a, b) { return heard[b] - heard[a]; });
+    var total = keys.reduce(function (s, k) { return s + heard[k]; }, 0);
+    $("heard-note").textContent = total ? total + " answers" : "";
+    if (!total) heardBox.appendChild(el("p", { class: "dash-empty", text: "No answers yet for this time range." }));
+    else {
+      var bar = el("div", { class: "split-bar" });
+      var legend = el("div", { class: "split-legend" });
+      keys.forEach(function (k, i) {
+        var pct = Math.round(heard[k] / total * 100);
+        var seg = el("span", { title: k + ": " + pct + "%" });
+        seg.style.flex = heard[k];
+        seg.style.background = HEARD_COLORS[i % HEARD_COLORS.length];
+        bar.appendChild(seg);
+        var dot = el("i");
+        dot.style.background = HEARD_COLORS[i % HEARD_COLORS.length];
+        legend.appendChild(el("span", null, [dot, document.createTextNode(k + " "), el("b", { text: pct + "%" })]));
+      });
+      heardBox.appendChild(bar);
+      heardBox.appendChild(legend);
+    }
+
+    // classes by rating
+    var top = $("top-classes");
+    top.textContent = "";
+    var byClass = {};
+    revNow.forEach(function (r) { if (r.a.class && r.a.stars) (byClass[r.a.class] = byClass[r.a.class] || []).push(r.a.stars); });
+    var rows = Object.keys(byClass).map(function (c) {
+      var v = byClass[c]; return { name: c, avg: v.reduce(function (a, b) { return a + b; }, 0) / v.length, n: v.length };
+    }).sort(function (a, b) { return b.avg - a.avg || b.n - a.n; });
+    if (!rows.length) top.appendChild(el("p", { class: "dash-empty", text: "No class reviews yet for this time range." }));
+    rows.slice(0, 6).forEach(function (row) {
+      var fill = el("span");
+      fill.style.width = (row.avg / 5 * 100) + "%";
+      top.appendChild(el("div", { class: "cls-row", "data-cat": S.categoryOf(row.name) }, [
+        el("span", { class: "cls-name", text: row.name }),
+        el("span", { class: "cls-bar" }, [fill]),
+        el("span", { class: "cls-num", text: row.avg.toFixed(1) + " ★ · " + row.n })
+      ]));
+    });
+  }
+
+  // ---------------- templates ----------------
+  var TEMPLATES = [
+    { icon: "◆", tone: "orange", title: "Event feedback", intro: "Thanks for coming! Tell us how it went.", questions: [
+      { type: "stars", label: "How would you rate the event?", required: true },
+      { type: "multi", label: "What did you enjoy?", options: ["The instructor", "The music", "The choreography", "Meeting people", "The space"] },
+      { type: "choice", label: "Would you come to another one?", options: ["Definitely", "Maybe", "Probably not"], required: true },
+      { type: "long", label: "Anything we could do better?" }] },
+    { icon: "＋", tone: "pink", title: "What class should we add next?", intro: "Help us plan the next schedule.", questions: [
+      { type: "multi", label: "Which classes would you take?", options: ["Heels / exotic", "Spin pole advanced", "Flexibility & stretch", "Floorwork", "Belly dance level 2", "Choreography"], required: true },
+      { type: "long", label: "Any other ideas?" }] },
+    { icon: "◷", tone: "blue", title: "Best class times", intro: "We want to schedule classes when you can make it.", questions: [
+      { type: "multi", label: "Which days work for you?", options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"], required: true },
+      { type: "multi", label: "What times work for you?", options: ["Morning (before 12)", "Afternoon (12–5)", "Evening (after 5)"], required: true }] },
+    { icon: "✿", tone: "green", title: "New student check-in", intro: "Welcome to the studio! A few quick questions.", questions: [
+      { type: "choice", label: "Have you done pole or dance before?", options: ["Never", "A little", "Yes, a lot"], required: true },
+      { type: "multi", label: "What are your goals?", options: ["Get stronger", "Get flexible", "Have fun", "Build confidence", "Learn tricks", "Perform"] },
+      { type: "choice", label: "How did you hear about us?", options: ["Instagram", "Facebook", "Google", "A friend", "Walked or drove by", "Other"] },
+      { type: "long", label: "Any injuries or anything we should know?" }] }
+  ];
+  function openTemplates() {
+    var list = $("tpl-list");
+    list.textContent = "";
+    TEMPLATES.forEach(function (t) {
+      var b = el("button", { type: "button", class: "tpl" }, [
+        el("span", { class: "sv-icon " + t.tone, text: t.icon }),
+        el("span", { class: "tpl-text" }, [el("strong", { text: t.title }), el("span", { text: t.questions.length + " questions · " + t.intro })]),
+        el("span", { class: "ed-chev", text: "›" })
+      ]);
+      b.addEventListener("click", function () { $("templates").close(); openBuilder(null, t); });
+      list.appendChild(b);
+    });
+    $("templates").showModal();
+  }
+  $("tpl-close").addEventListener("click", function () { $("templates").close(); });
+  $("templates").addEventListener("click", function (e) { if (e.target === $("templates")) $("templates").close(); });
 
   // ---------------- reviews ----------------
   $("rv-filter").addEventListener("click", function (e) {
@@ -54,6 +296,8 @@
   });
 
   function renderReviews() {
+    var waiting = reviews.filter(function (r) { return r.st === "new"; }).length;
+    $("badge").textContent = waiting ? String(waiting) : "";
     ["new", "approved", "hidden"].forEach(function (k) {
       var n = reviews.filter(function (r) { return r.st === k; }).length;
       $("n-" + k).textContent = n ? "(" + n + ")" : "";
@@ -118,7 +362,8 @@
       if (change.status) r.st = change.status;
       if (typeof change.featured === "boolean") r.f = change.featured;
       renderReviews();
-      msg(change.status === "approved" ? "Approved. It's on the website now." : "");
+      renderOverview();
+      msg(change.status === "approved" ? "Approved. It's on the website now." : change.remove ? "Deleted." : "Saved.");
     }).catch(function (e) { msg(e.message); });
   }
 
@@ -133,21 +378,35 @@
     var list = $("survey-list");
     list.textContent = "";
     surveys.forEach(function (s) {
-      var row = el("div", { class: "svl-row" }, [
-        el("div", { class: "svl-text" }, [
-          el("strong", { text: s.title }),
-          el("span", { class: "svl-sub", text: (s.kind === "review" ? "Class reviews" : whereText(s)) + " · " + s.questions.length + (s.questions.length === 1 ? " question · " : " questions · ") + (s.open ? "Open" : "Closed") })
+      var all = cache[s.id] || [];
+      var inR = withinRange(all);
+      var last = all[0];
+      var card = el("article", { class: "sv-card" + (s.open ? "" : " is-closed") }, [
+        el("div", { class: "sv-card-top" }, [
+          el("span", { class: "sv-icon " + (s.kind === "review" ? "pink" : s.event ? "orange" : "blue"), text: s.kind === "review" ? "★" : s.event ? "◆" : "?" }),
+          el("div", { class: "sv-card-text" }, [
+            el("strong", { text: s.title }),
+            el("span", { text: (s.kind === "review" ? "Class reviews" : whereText(s)) + " · " + s.questions.length + (s.questions.length === 1 ? " question" : " questions") })
+          ]),
+          el("span", { class: "sv-pill " + (s.open ? "on" : ""), text: s.open ? "Open" : "Closed" })
+        ]),
+        el("div", { class: "sv-card-stats" }, [
+          el("div", null, [el("b", { text: String(inR.length) }), el("span", { text: rangeLabel() })]),
+          el("div", null, [el("b", { text: String(all.length) }), el("span", { text: "all time" })]),
+          el("div", null, [el("b", { text: last ? S.formatDate(new Date(last.t).toISOString().slice(0, 10), { month: "short", day: "numeric" }) : "–" }), el("span", { text: "last answer" })])
         ])
       ]);
-      var actions = el("div", { class: "svl-actions" });
-      function btn(label, fn, cls) { var b = el("button", { type: "button", class: cls || "chip", text: label }); b.addEventListener("click", fn); actions.appendChild(b); }
-      btn("Copy link", function () { copy(linkFor(s), "Link copied: " + linkFor(s)); });
-      if (navigator.share) btn("Share", function () { navigator.share({ title: s.title, url: linkFor(s) }).catch(function () {}); });
-      btn("Results", function () { openResults(s); });
+      var actions = el("div", { class: "sv-card-actions" });
+      function btn(label, fn, cls) { var b = el("button", { type: "button", class: cls || "", text: label }); b.addEventListener("click", fn); actions.appendChild(b); }
+      btn("Results", function () { openResults(s); }, "is-main");
+      btn(navigator.share ? "Share" : "Copy link", function () {
+        if (navigator.share) navigator.share({ title: s.title, url: linkFor(s) }).catch(function () {});
+        else copy(linkFor(s), "Link copied!");
+      });
       btn("Edit", function () { openBuilder(s); });
-      btn(s.open ? "Close it" : "Open it", function () { s.open = !s.open; saveSurveys(); });
-      row.appendChild(actions);
-      list.appendChild(row);
+      btn(s.open ? "Close" : "Open", function () { s.open = !s.open; saveSurveys(); });
+      card.appendChild(actions);
+      list.appendChild(card);
     });
   }
 
@@ -168,6 +427,7 @@
         review: reviewS ? { title: reviewS.title, intro: reviewS.intro, questions: reviewS.questions } : null })
     }).then(function (body) {
       surveys = body.surveys;
+      surveys.forEach(function (x) { cache[x.id] = cache[x.id] || []; });
       renderSurveys();
       msg("Saved.");
     }).catch(function (e) { msg(e.message); throw e; });
@@ -175,32 +435,20 @@
 
   // ---------------- results ----------------
   var resultsSurvey = null;
-  var range = "all";
-  $("res-range").addEventListener("click", function (e) {
-    var b = e.target.closest("[data-r]");
-    if (!b) return;
-    range = b.getAttribute("data-r");
-    $("res-range").querySelectorAll("[data-r]").forEach(function (x) { x.setAttribute("aria-pressed", String(x === b)); });
-    drawResults();
-  });
   $("res-close").addEventListener("click", function () { $("results").close(); });
   $("results").addEventListener("click", function (e) { if (e.target === $("results")) $("results").close(); });
 
   function openResults(s) {
     resultsSurvey = s;
     $("res-title").textContent = s.title;
+    $("res-where").textContent = (s.kind === "review" ? "Class reviews" : whereText(s)) + " · " + rangeLabel();
     $("res-body").textContent = "Loading…";
     $("results").showModal();
     var load = cache[s.id] ? Promise.resolve(cache[s.id]) : api("/api/admin/responses?survey=" + encodeURIComponent(s.id)).then(function (b) { cache[s.id] = b.responses; return b.responses; });
     load.then(drawResults).catch(function (e) { $("res-body").textContent = e.message; });
   }
 
-  function inRange() {
-    var all = cache[resultsSurvey.id] || [];
-    if (range === "all") return all;
-    var since = Date.now() - Number(range) * 864e5;
-    return all.filter(function (r) { return r.t >= since; });
-  }
+  function inRange() { return withinRange(cache[resultsSurvey.id] || []); }
 
   function bars(rows, total) {
     var wrap = el("div", { class: "res-bars" });
@@ -222,6 +470,7 @@
     body.textContent = "";
     body.appendChild(el("p", { class: "res-total", text: list.length + (list.length === 1 ? " response" : " responses") }));
     if (!list.length) return;
+    body.appendChild(trendChart(list));
 
     // Review survey: stars by class first, it's the main question.
     if (s.kind === "review") {
@@ -273,7 +522,8 @@
   }
 
   // Spreadsheet (CSV opens in Excel, Numbers and Google Sheets)
-  $("res-csv").addEventListener("click", function () {
+  $("res-csv").addEventListener("click", exportCsv);
+  function exportCsv() {
     var s = resultsSurvey;
     var rows = inRange();
     var head = ["Date"].concat(s.questions.map(function (q) { return q.label; }));
@@ -290,16 +540,29 @@
     var blob = new Blob(["﻿" + lines.join("\n")], { type: "text/csv;charset=utf-8" });
     var a = el("a", { href: URL.createObjectURL(blob), download: (s.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "survey") + ".csv" });
     document.body.appendChild(a); a.click(); a.remove();
-  });
+  }
 
   // ---------------- survey builder ----------------
   var draft = null;
-  $("new-survey").addEventListener("click", function () { openBuilder(null); });
+  document.addEventListener("click", function (e) {
+    var b = e.target.closest("[data-act]");
+    if (!b) return;
+    var act = b.getAttribute("data-act");
+    if (act === "new") openBuilder(null);
+    if (act === "templates") openTemplates();
+    if (act === "share") {
+      var link = location.origin + "/survey?id=review";
+      if (navigator.share) navigator.share({ title: "How was your class?", url: link }).catch(function () {});
+      else copy(link, "Review link copied!");
+    }
+    if (act === "export") { resultsSurvey = surveys[0]; exportCsv(); }
+    if (act === "review-results") openResults(surveys[0]);
+  });
   $("b-cancel").addEventListener("click", function () { $("builder").close(); });
   $("builder").addEventListener("click", function (e) { if (e.target === $("builder")) $("builder").close(); });
 
-  function openBuilder(s) {
-    draft = s ? JSON.parse(JSON.stringify(s)) : { id: "", kind: "custom", title: "", intro: "", open: true, event: "", questions: [{ type: "choice", label: "", options: [], required: true }] };
+  function openBuilder(s, template) {
+    draft = s ? JSON.parse(JSON.stringify(s)) : template ? Object.assign({ id: "", kind: "custom", open: true, event: "" }, JSON.parse(JSON.stringify(template))) : { id: "", kind: "custom", title: "", intro: "", open: true, event: "", questions: [{ type: "choice", label: "", options: [], required: true }] };
     draft.questions.forEach(function (q) { if (q.type === "text" && q.long) q.type = "long"; });
     $("b-title").textContent = s ? "Edit survey" : "New survey";
     $("b-name").value = draft.title;
