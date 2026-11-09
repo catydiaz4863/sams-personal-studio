@@ -7,7 +7,7 @@
   function card(e) {
     var type = S.eventType(e.type);
     var d = S.parseDate(e.date);
-    var when = S.formatDate(e.date) + (e.time ? " · " + S.formatTime(e.time) : "");
+    var when = e.time ? S.formatTime(e.time) : "Time TBA";
     var dateShort = S.formatDate(e.date, { weekday: "short", month: "short", day: "numeric" });
     var signup = S.smsLink("Hi! I'd like to sign up for " + e.title + " on " + dateShort + ".");
 
@@ -63,7 +63,20 @@
     var teaser = document.getElementById("home-events");
     if (teaser && events.length) {
       var holder = document.getElementById("home-event-list");
-      events.slice(0, 2).forEach(function (e) { holder.appendChild(card(e)); });
+      events.slice(0, 3).forEach(function (e) {
+        var d = S.parseDate(e.date);
+        holder.appendChild(el("a", { class: "ev-mini", href: "/events", "data-cat": S.eventType(e.type).cat }, [
+          el("span", { class: "ev-mini-date" }, [
+            el("span", { text: d.toLocaleDateString("en-US", { month: "short" }) }),
+            el("strong", { text: String(d.getDate()) })
+          ]),
+          el("span", { class: "ev-mini-text" }, [
+            el("strong", { text: e.title }),
+            el("span", { text: S.eventType(e.type).label + (e.time ? " · " + S.formatTime(e.time) : "") })
+          ]),
+          el("span", { class: "ed-chev", text: "›" })
+        ]));
+      });
       teaser.hidden = false;
     }
   }).catch(function () { /* leave the static text */ });
