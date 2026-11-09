@@ -1765,3 +1765,9 @@ dialog.sheet-tall { max-height: 94vh; }
   font: 700 0.95rem var(--font-body); cursor: pointer;
 }
 .add-class:hover { border-color: var(--ink); }
+.bq-locked { background: #f3eee9; }
+.bq-review-note { background: var(--blue-tint); border-radius: 10px; padding: 10px 12px; }
+#b-where .chip { min-height: 40px; font-size: 0.9rem; }
+.ev-recent-h { font-size: 1.3rem; margin: 32px 0 12px; }
+.ev-recent .ev-card { opacity: 0.95; }
+.sv-event { display: inline-block; margin: 0 0 8px; padding: 5px 12px; border-radius: 999px; background: var(--pink-tint); color: var(--pink-ink); font-weight: 700; font-size: 0.88rem; }

@@ -11,6 +11,7 @@
   var reviews = [];        // responses to the class review
   var filter = "new";
   var cache = {};          // survey id -> responses
+  var events = [];         // studio events, for attaching surveys
 
   var TYPE_LABELS = { stars: "Stars (1–5)", scale: "0–10 scale", choice: "Pick one", multi: "Pick any", text: "Short answer", long: "Long answer" };
 
@@ -31,7 +32,8 @@
 
   fetch("/api/session", { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (s) {
     if (!s.loggedIn) return showLogin();
-    return Promise.all([api("/api/admin/surveys"), api("/api/admin/responses?survey=review")]).then(function (res) {
+    return Promise.all([api("/api/admin/surveys"), api("/api/admin/responses?survey=review"), api("/api/schedule")]).then(function (res) {
+      events = (res[2].events || []).filter(function (e) { return e.id; });
       surveys = res[0].surveys;
       reviewOpen = surveys[0].open;
       reviews = res[1].responses;
@@ -134,7 +136,7 @@
       var row = el("div", { class: "svl-row" }, [
         el("div", { class: "svl-text" }, [
           el("strong", { text: s.title }),
-          el("span", { class: "svl-sub", text: (s.kind === "review" ? "Built-in class review" : s.questions.length + " questions") + " · " + (s.open ? "Open" : "Closed") })
+          el("span", { class: "svl-sub", text: (s.kind === "review" ? "Class reviews" : whereText(s)) + " · " + s.questions.length + (s.questions.length === 1 ? " question · " : " questions · ") + (s.open ? "Open" : "Closed") })
         ])
       ]);
       var actions = el("div", { class: "svl-actions" });
@@ -142,11 +144,19 @@
       btn("Copy link", function () { copy(linkFor(s), "Link copied: " + linkFor(s)); });
       if (navigator.share) btn("Share", function () { navigator.share({ title: s.title, url: linkFor(s) }).catch(function () {}); });
       btn("Results", function () { openResults(s); });
-      if (s.kind !== "review") btn("Edit", function () { openBuilder(s); });
+      btn("Edit", function () { openBuilder(s); });
       btn(s.open ? "Close it" : "Open it", function () { s.open = !s.open; saveSurveys(); });
       row.appendChild(actions);
       list.appendChild(row);
     });
+  }
+
+  function eventById(id) { return events.filter(function (e) { return e.id === id; })[0]; }
+  function eventText(e) { return e.title + " (" + S.formatDate(e.date, { month: "short", day: "numeric" }) + ")"; }
+  function whereText(s) {
+    if (!s.event) return "General";
+    var e = eventById(s.event);
+    return e ? "Event: " + eventText(e) : "Event (removed)";
   }
 
   function saveSurveys() {
@@ -154,7 +164,8 @@
     var reviewS = surveys.filter(function (s) { return s.kind === "review"; })[0];
     return api("/api/admin/surveys", {
       method: "PUT", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ reviewOpen: reviewS ? reviewS.open : true, surveys: custom })
+      body: JSON.stringify({ reviewOpen: reviewS ? reviewS.open : true, surveys: custom,
+        review: reviewS ? { title: reviewS.title, intro: reviewS.intro, questions: reviewS.questions } : null })
     }).then(function (body) {
       surveys = body.surveys;
       renderSurveys();
@@ -288,21 +299,56 @@
   $("builder").addEventListener("click", function (e) { if (e.target === $("builder")) $("builder").close(); });
 
   function openBuilder(s) {
-    draft = s ? JSON.parse(JSON.stringify(s)) : { id: "", title: "", intro: "", open: true, questions: [{ type: "choice", label: "", options: [], required: true }] };
+    draft = s ? JSON.parse(JSON.stringify(s)) : { id: "", kind: "custom", title: "", intro: "", open: true, event: "", questions: [{ type: "choice", label: "", options: [], required: true }] };
     draft.questions.forEach(function (q) { if (q.type === "text" && q.long) q.type = "long"; });
     $("b-title").textContent = s ? "Edit survey" : "New survey";
     $("b-name").value = draft.title;
     $("b-intro").value = draft.intro || "";
-    $("b-delete").hidden = !s;
+    $("b-delete").hidden = !s || draft.kind === "review";
+    $("b-where-wrap").hidden = draft.kind === "review";
+    $("b-review-note").hidden = draft.kind !== "review";
+    drawWhere();
     $("b-error").textContent = "";
     drawQuestions();
     $("builder").showModal();
+  }
+
+  // Where the survey shows: general link, or on one event's card
+  function drawWhere() {
+    var holder = $("b-where");
+    holder.textContent = "";
+    var today = S.localDateKey();
+    var since = new Date(Date.now() - 30 * 864e5);
+    var sinceKey = S.localDateKey(since);
+    var list = events.filter(function (e) { return e.date >= sinceKey || e.id === draft.event; })
+      .sort(function (a, b) { return a.date.localeCompare(b.date); });
+    function chip(label, value) {
+      var b = el("button", { type: "button", class: "chip", "aria-pressed": String((draft.event || "") === value), text: label });
+      b.addEventListener("click", function () { draft.event = value; drawWhere(); });
+      holder.appendChild(b);
+    }
+    chip("General (just a link)", "");
+    list.forEach(function (e) { chip((e.date < today ? "Past: " : "") + eventText(e), e.id); });
+    $("b-where-hint").textContent = draft.event
+      ? "A button to this survey shows on that event's card, and for 2 weeks after the event."
+      : list.length ? "Only people with the link can answer it." : "Only people with the link can answer it. Add events on the Schedule page to attach surveys to them.";
   }
 
   function drawQuestions() {
     var holder = $("b-questions");
     holder.textContent = "";
     draft.questions.forEach(function (q, i) {
+      if (q.locked) {
+        var lab = el("input", { class: "sheet-input", type: "text", maxlength: "140" });
+        lab.value = q.label;
+        lab.addEventListener("input", function () { q.label = lab.value; });
+        holder.appendChild(el("div", { class: "bq bq-locked" }, [
+          el("span", { class: "bq-num", text: "Question " + (i + 1) + " · built in" }),
+          lab,
+          el("p", { class: "hint", text: "Needed for reviews on the website. You can reword it, but not remove it." })
+        ]));
+        return;
+      }
       var types = el("div", { class: "chips bq-types" });
       Object.keys(TYPE_LABELS).forEach(function (t) {
         var b = el("button", { type: "button", class: "chip", "aria-pressed": String(q.type === t), text: TYPE_LABELS[t] });
@@ -323,10 +369,17 @@
       req.firstChild.checked = !!q.required;
       req.firstChild.addEventListener("change", function () { q.required = req.firstChild.checked; });
       var tools = el("div", { class: "bq-tools" }, [req]);
+      if (draft.kind === "review") {
+        var priv = el("label", { class: "bq-req" }, [el("input", { type: "checkbox" }), document.createTextNode(" Private")]);
+        priv.firstChild.checked = !!q.private;
+        priv.firstChild.addEventListener("change", function () { q.private = priv.firstChild.checked; });
+        priv.title = "Only you see private answers; they never show on the website.";
+        tools.insertBefore(priv, req.nextSibling);
+      }
       function tool(text, fn, disabled) { var b = el("button", { type: "button", class: "chip", text: text }); if (disabled) b.disabled = true; b.addEventListener("click", fn); tools.appendChild(b); }
-      tool("↑", function () { draft.questions.splice(i - 1, 0, draft.questions.splice(i, 1)[0]); drawQuestions(); }, i === 0);
+      tool("↑", function () { draft.questions.splice(i - 1, 0, draft.questions.splice(i, 1)[0]); drawQuestions(); }, i === 0 || draft.questions[i - 1].locked);
       tool("↓", function () { draft.questions.splice(i + 1, 0, draft.questions.splice(i, 1)[0]); drawQuestions(); }, i === draft.questions.length - 1);
-      tool("Remove", function () { draft.questions.splice(i, 1); drawQuestions(); }, draft.questions.length === 1);
+      tool("Remove", function () { draft.questions.splice(i, 1); drawQuestions(); }, draft.questions.filter(function (x) { return !x.locked; }).length === 1 && draft.kind !== "review");
       kids.push(tools);
       holder.appendChild(el("div", { class: "bq" }, kids));
     });
@@ -349,11 +402,14 @@
     out.questions = out.questions.filter(function (q) { return q.label.trim(); }).map(function (q) {
       var long = q.type === "long";
       var item = { id: q.id, type: long ? "text" : q.type, label: q.label.trim(), required: !!q.required };
+      if (q.private) item.private = true;
+      if (q.locked) item.locked = true;
       if (long) item.long = true;
       if (q.type === "choice" || q.type === "multi") item.options = (q.options || []).map(function (o) { return o.trim(); }).filter(Boolean);
       return item;
     });
     if (!out.questions.length) { $("b-error").textContent = "Add at least one question."; return; }
+    out.event = draft.event || "";
     var bad = out.questions.filter(function (q) { return (q.type === "choice" || q.type === "multi") && q.options.length < 2; })[0];
     if (bad) { $("b-error").textContent = "“" + bad.label + "” needs at least 2 options (one per line)."; return; }
     var i = surveys.findIndex(function (s) { return draft.id && s.id === draft.id; });

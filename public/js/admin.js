@@ -130,7 +130,7 @@
       if (byKey[key].days.indexOf(c.day) === -1) byKey[key].days.push(c.day);
     });
     events = (data.events || []).map(function (e) {
-      return { id: nextId++, type: e.type, title: e.title, date: e.date, time: e.time || "", price: e.price != null ? e.price : "", description: e.description || "", image: e.image || "" };
+      return { id: nextId++, eid: e.id || "", type: e.type, title: e.title, date: e.date, time: e.time || "", price: e.price != null ? e.price : "", description: e.description || "", image: e.image || "" };
     });
     dirty = false;
     render();
@@ -512,7 +512,7 @@
       !title ? "Give the event a name." : !date ? "Pick a date." :
       (price && !/^\d{1,4}$/.test(price)) ? "Price must be whole dollars, like 25." : "";
     if (missing) { ev.preventDefault(); $("event-error").textContent = missing; return; }
-    var saved = { id: editingEvent.id || nextId++, type: editingEvent.type, title: title, date: date,
+    var saved = { id: editingEvent.id || nextId++, eid: editingEvent.eid || "", type: editingEvent.type, title: title, date: date,
       time: $("ev-time").value, price: price === "" ? "" : Number(price), description: $("ev-desc").value.trim(),
       image: editingEvent.image || "" };
     var i = events.findIndex(function (x) { return x.id === saved.id; });
@@ -566,6 +566,7 @@
     });
     var evs = events.map(function (e) {
       var o = { type: e.type, title: e.title, date: e.date };
+      if (e.eid) o.id = e.eid;
       if (e.time) o.time = e.time;
       if (e.price !== "" && e.price != null) o.price = Number(e.price);
       if (e.description) o.description = e.description;

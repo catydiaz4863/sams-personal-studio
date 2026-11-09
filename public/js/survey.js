@@ -96,6 +96,7 @@
   function render() {
     root.textContent = "";
     var form = el("form", { class: "sv-form", novalidate: "" });
+    if (survey.event) form.appendChild(el("p", { class: "sv-event", text: survey.event.title + " · " + S.formatDate(survey.event.date, { weekday: "short", month: "short", day: "numeric" }) }));
     form.appendChild(el("h1", { text: survey.title }));
     if (survey.intro) form.appendChild(el("p", { class: "lede", text: survey.intro }));
 

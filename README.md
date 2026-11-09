@@ -47,7 +47,10 @@ Pages are served at short addresses: `/schedule`, `/classes`, `/events`, `/about
   0-10 recommend, how long they've trained). Responses are stored in KV as
   `resp:<survey>:<id>`; nothing is public until Sam approves it, and approved
   reviews are copied to `reviews:public` without the private answers. Sam sees
-  results and downloads a CSV on `/admin-surveys`. Spam: hidden honeypot field,
+  results and downloads a CSV on `/admin-surveys`. The class review is editable
+  (its class / stars / comment / name questions are locked). A custom survey can
+  be attached to an event (by the event's `id`); its button shows on that event's
+  card and for 14 days after the event. Spam: hidden honeypot field,
   minimum fill time, 8 submissions per hour per IP.
 - Every save keeps the previous version under the KV key `schedule:previous`.
 - `public/data/schedule.json` is the starter schedule, used until the first save.

@@ -74,6 +74,12 @@
     <input id="b-name" class="sheet-input" type="text" maxlength="80" placeholder="e.g. What class should we add next?">
     <label class="sheet-label" for="b-intro">Short intro <span class="opt">(optional)</span></label>
     <input id="b-intro" class="sheet-input" type="text" maxlength="300" placeholder="e.g. Takes 1 minute. Thank you!">
+    <p class="hint bq-review-note" id="b-review-note" hidden>This is your class review. The first questions are built in. Add your own below; tick <strong>Private</strong> for answers only you should see.</p>
+    <div id="b-where-wrap">
+      <p class="sheet-label">Where does this survey go?</p>
+      <div class="chips" id="b-where"></div>
+      <p class="hint" id="b-where-hint"></p>
+    </div>
     <p class="sheet-label">Questions</p>
     <div id="b-questions" class="bq-list"></div>
     <button type="button" class="add-class" id="b-add">+ Add a question</button>

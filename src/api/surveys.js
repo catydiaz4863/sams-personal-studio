@@ -24,11 +24,11 @@ export const REVIEW = {
   intro: "Takes 30 seconds. Your review helps other students find their class.",
   open: true,
   questions: [
-    { id: "class", type: "class", label: "Which class did you take?", required: true },
-    { id: "stars", type: "stars", label: "How would you rate it?", required: true },
+    { id: "class", type: "class", label: "Which class did you take?", required: true, locked: true },
+    { id: "stars", type: "stars", label: "How would you rate it?", required: true, locked: true },
     { id: "tags", type: "multi", label: "What did you like? (tap any)", options: ["Loved it", "Great workout", "Great for beginners", "Clear instructions", "Fun vibe", "Built my confidence"] },
-    { id: "comment", type: "text", long: true, label: "Anything you'd tell a friend? (optional)" },
-    { id: "name", type: "text", label: "Your first name (optional)", placeholder: "Shown as first name + last initial" },
+    { id: "comment", type: "text", long: true, label: "Anything you'd tell a friend? (optional)", locked: true },
+    { id: "name", type: "text", label: "Your first name (optional)", placeholder: "Shown as first name + last initial", locked: true },
     { id: "heard", type: "choice", private: true, label: "How did you hear about us?", options: ["Instagram", "Facebook", "Google", "A friend", "Walked or drove by", "Other"] },
     { id: "recommend", type: "scale", private: true, label: "How likely are you to recommend us to a friend? (0–10)" },
     { id: "tenure", type: "choice", private: true, label: "How long have you trained with us?", options: ["First month", "1–6 months", "6+ months"] },
@@ -59,7 +59,20 @@ async function loadCustom(env) {
 }
 async function allSurveys(env) {
   const saved = await loadCustom(env);
-  return [{ ...REVIEW, open: saved.reviewOpen !== false }, ...saved.surveys];
+  const r = saved.review || {};
+  const review = {
+    ...REVIEW,
+    title: r.title || REVIEW.title,
+    intro: r.intro != null ? r.intro : REVIEW.intro,
+    questions: r.questions || REVIEW.questions,
+    open: saved.reviewOpen !== false,
+  };
+  return [review, ...saved.surveys];
+}
+async function loadEvents(env, request) {
+  const saved = await env.SCHEDULE_KV.get("schedule");
+  const data = saved ? JSON.parse(saved) : await (await env.ASSETS.fetch(new URL("/data/schedule.json", request.url))).json();
+  return data.events || [];
 }
 async function classOptions(env, request) {
   let schedule = null;
@@ -159,6 +172,10 @@ export const survey = {
     if (!s) return json({ error: "This survey doesn't exist." }, { status: 404 });
     if (!s.open) return json({ closed: true, title: s.title });
     const body = { id: s.id, kind: s.kind || "custom", title: s.title, intro: s.intro || "", questions: s.questions };
+    if (s.event) {
+      const ev = (await loadEvents(env, request)).find((e) => e.id === s.event);
+      if (ev) body.event = { title: ev.title, date: ev.date };
+    }
     if (s.questions.some((q) => q.type === "class")) body.classes = await classOptions(env, request);
     return json(body);
   },
@@ -187,6 +204,14 @@ export const survey = {
   },
 };
 
+// GET /api/survey-links -> open surveys that belong to an event
+export const surveyLinks = {
+  async onRequestGet({ env }) {
+    const list = (await allSurveys(env)).filter((s) => s.open && s.event).map((s) => ({ id: s.id, title: s.title, event: s.event }));
+    return json(list);
+  },
+};
+
 // GET /api/reviews -> approved reviews for the website
 export const reviews = {
   async onRequestGet({ env }) {
@@ -204,6 +229,42 @@ async function guard(request, env, write) {
   return null;
 }
 
+function validateQuestions(list, title, isReview) {
+  const qs = [];
+  const qids = new Set();
+  for (const q of (list || []).slice(0, 25)) {
+    const label = clean(q && q.label, 140);
+    if (!label) continue;
+    const core = isReview ? REVIEW.questions.find((x) => x.locked && x.id === q.id) : null;
+    if (core) {
+      qs.push({ ...core, label });
+      qids.add(core.id);
+      continue;
+    }
+    if (!TYPES.includes(q.type) || q.type === "class") return { error: `"${title}" has a question with an unknown type.` };
+    let qid = clean(q.id, 16).replace(/[^a-zA-Z0-9]/g, "") || "q" + (qs.length + 1);
+    while (qids.has(qid) || (isReview && REVIEW.questions.some((x) => x.locked && x.id === qid))) qid += "x";
+    qids.add(qid);
+    const item = { id: qid, type: q.type, label, required: !!q.required };
+    if (q.type === "choice" || q.type === "multi") {
+      const opts = [...new Set((q.options || []).map((o) => clean(o, 60)).filter(Boolean))].slice(0, 12);
+      if (opts.length < 2) return { error: `"${label}" needs at least 2 options.` };
+      item.options = opts;
+    }
+    if (q.type === "text" && q.long) item.long = true;
+    if (q.private) item.private = true;
+    qs.push(item);
+  }
+  if (isReview) {
+    // the four core questions can be reworded but never removed
+    REVIEW.questions.filter((x) => x.locked && !qids.has(x.id)).forEach((x) => qs.push({ ...x }));
+    const order = (q) => (q.locked ? REVIEW.questions.indexOf(REVIEW.questions.find((x) => x.id === q.id)) : 50);
+    qs.sort((a, b) => order(a) - order(b));
+  }
+  if (!qs.length) return { error: `"${title}" needs at least one question.` };
+  return { questions: qs };
+}
+
 function validateSurveys(list) {
   if (!Array.isArray(list) || list.length > 30) return { error: "Too many surveys." };
   const out = [];
@@ -214,26 +275,10 @@ function validateSurveys(list) {
     let id = clean(s.id, 24).toLowerCase().replace(/[^a-z0-9-]/g, "");
     if (!id || ids.has(id)) id = newId();
     ids.add(id);
-    const qs = [];
-    const qids = new Set();
-    for (const q of (s.questions || []).slice(0, 25)) {
-      const label = clean(q && q.label, 140);
-      if (!label) continue;
-      if (!TYPES.includes(q.type) || q.type === "class") return { error: `"${title}" has a question with an unknown type.` };
-      let qid = clean(q.id, 16).replace(/[^a-zA-Z0-9]/g, "") || "q" + (qs.length + 1);
-      while (qids.has(qid)) qid += "x";
-      qids.add(qid);
-      const item = { id: qid, type: q.type, label, required: !!q.required };
-      if (q.type === "choice" || q.type === "multi") {
-        const opts = [...new Set((q.options || []).map((o) => clean(o, 60)).filter(Boolean))].slice(0, 12);
-        if (opts.length < 2) return { error: `"${label}" needs at least 2 options.` };
-        item.options = opts;
-      }
-      if (q.type === "text" && q.long) item.long = true;
-      qs.push(item);
-    }
-    if (!qs.length) return { error: `"${title}" needs at least one question.` };
-    out.push({ id, kind: "custom", title, intro: clean(s.intro, 300), open: s.open !== false, questions: qs, created: s.created || Date.now() });
+    const v = validateQuestions(s.questions, title, false);
+    if (v.error) return v;
+    const event = /^[a-z0-9]{6,24}$/.test(String(s.event || "")) ? s.event : "";
+    out.push({ id, kind: "custom", title, intro: clean(s.intro, 300), open: s.open !== false, event, questions: v.questions, created: s.created || Date.now() });
   }
   return { surveys: out };
 }
@@ -253,7 +298,15 @@ export const adminSurveys = {
     try { body = await request.json(); } catch { return json({ error: "Bad request" }, { status: 400 }); }
     const result = validateSurveys(body.surveys);
     if (result.error) return json({ error: result.error }, { status: 400 });
-    await env.SCHEDULE_KV.put("surveys", JSON.stringify({ reviewOpen: body.reviewOpen !== false, surveys: result.surveys }));
+    const saved = await loadCustom(env);
+    let review = saved.review;
+    if (body.review) {
+      const title = clean(body.review.title, 80) || REVIEW.title;
+      const v = validateQuestions(body.review.questions, title, true);
+      if (v.error) return json({ error: v.error }, { status: 400 });
+      review = { title, intro: clean(body.review.intro, 300), questions: v.questions };
+    }
+    await env.SCHEDULE_KV.put("surveys", JSON.stringify({ reviewOpen: body.reviewOpen !== false, review, surveys: result.surveys }));
     return json({ surveys: await allSurveys(env) });
   },
 };
