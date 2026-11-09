@@ -56,7 +56,7 @@
     <dialog class="sheet" id="event-sheet" aria-labelledby="event-title-h">
       <form method="dialog" class="sheet-inner" id="event-form">
         <div class="sheet-grab" aria-hidden="true"></div>
-        <h2 id="event-title-h">New event</h2>
+        <h2 id="event-title-h" tabindex="-1" autofocus>New event</h2>
         <p class="sheet-label" id="lbl-etype">Type</p>
         <div class="chips" id="etype-chips" role="radiogroup" aria-labelledby="lbl-etype"></div>
         <label class="sheet-label" for="ev-title">Name</label>
@@ -64,7 +64,10 @@
         <div class="ev-row">
           <div>
             <label class="sheet-label" for="ev-date">Date</label>
-            <input id="ev-date" class="sheet-input" type="date">
+            <div class="date-wrap">
+              <input id="ev-date" class="sheet-input" type="date">
+              <span class="date-hint" aria-hidden="true">Tap to pick a date</span>
+            </div>
           </div>
           <div>
             <label class="sheet-label" for="ev-time">Time</label>
@@ -98,7 +101,7 @@
     <dialog class="sheet" id="class-sheet" aria-labelledby="sheet-title">
       <form method="dialog" class="sheet-inner" id="class-form">
         <div class="sheet-grab" aria-hidden="true"></div>
-        <h2 id="sheet-title">Edit class</h2>
+        <h2 id="sheet-title" tabindex="-1" autofocus>Edit class</h2>
 
         <p class="sheet-label" id="lbl-class">Class</p>
         <div class="chips" id="name-chips" role="radiogroup" aria-labelledby="lbl-class"></div>
@@ -125,7 +128,7 @@
     <dialog class="sheet" id="settings-sheet" aria-labelledby="settings-title">
       <form method="dialog" class="sheet-inner">
         <div class="sheet-grab" aria-hidden="true"></div>
-        <h2 id="settings-title">Month &amp; prices</h2>
+        <h2 id="settings-title" tabindex="-1" autofocus>Month &amp; prices</h2>
         <label class="sheet-label" for="month">Schedule title</label>
         <input id="month" class="sheet-input" type="text" maxlength="40" placeholder="December 2026">
         <label class="sheet-label" for="note">Note at the top of the schedule</label>

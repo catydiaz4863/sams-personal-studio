@@ -1522,3 +1522,46 @@ dialog.sheet[open] { animation: sheet-up 0.22s ease-out; }
 .ev-flyer img { width: 100%; max-height: 460px; object-fit: contain; display: block; margin: 0 auto; }
 @media (max-width: 699px) { .ev-flyer { margin: -14px -14px 2px; } }
 .admin .file-btn { display: inline-flex; align-items: center; justify-content: center; margin: 0; padding: 0 16px; }
+
+/* event panel: date + time fit on every phone (Safari's date box ignores
+   its column width unless told otherwise) */
+.ev-row > div { min-width: 0; }
+.admin input[type="date"] {
+  -webkit-appearance: none;
+  appearance: none;
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  text-align: left;
+}
+.admin input[type="date"]::-webkit-date-and-time-value { text-align: left; }
+.date-wrap { position: relative; }
+.date-hint {
+  display: none;
+  position: absolute;
+  left: 14px; top: 50%;
+  transform: translateY(-50%);
+  color: #9a929f;
+  font: 500 1rem var(--font-body);
+  pointer-events: none;
+}
+.date-wrap.is-empty .date-hint { display: block; }
+.date-wrap.is-empty input[type="date"] { color: transparent; }
+.date-wrap.is-empty input[type="date"]:focus { color: var(--ink); }
+.date-wrap.is-empty input[type="date"]:focus + .date-hint { display: none; }
+@media (max-width: 520px) {
+  .ev-row { grid-template-columns: 1fr; gap: 0; }
+}
+/* the panel title takes focus when it opens; no ring needed there */
+.sheet h2:focus { outline: none; }
+/* price boxes match the other fields */
+.admin .money input {
+  min-height: 50px;
+  padding: 10px 12px;
+  border: 2px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  font: 700 1.05rem var(--font-body);
+  color: var(--ink);
+}
+.admin .money input:focus { border-color: var(--blue); outline: none; }
