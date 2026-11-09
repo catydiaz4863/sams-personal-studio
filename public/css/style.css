@@ -1647,3 +1647,121 @@ dialog.sheet[open] { animation: sheet-up 0.22s ease-out; }
   .footer-inner > div:first-child p:not(.footer-brand) { display: none; }
   .site-footer li { margin-bottom: 2px; }
 }
+
+/* ---------- survey page ---------- */
+.sv-wrap { max-width: 640px; }
+.sv-form h1 { font-size: clamp(1.9rem, 6vw, 2.6rem); margin-bottom: 0.2em; }
+.sv-block { margin-top: 26px; }
+.sv-q { font-weight: 700; font-size: 1.05rem; margin: 0 0 10px; }
+.sv-chips .chip { min-height: 44px; }
+.sv-stars { display: flex; gap: 6px; }
+.sv-star {
+  width: 52px; height: 52px; border: 0; border-radius: 12px;
+  background: #f3eee9; color: #cfc6be; font-size: 1.8rem; line-height: 1; cursor: pointer;
+}
+.sv-star.on { background: #fff4d6; color: #f5a623; }
+.sv-scale { display: grid; grid-template-columns: repeat(11, 1fr); gap: 4px; }
+.sv-num {
+  min-height: 44px; border: 0; border-radius: 10px; background: #f3eee9;
+  font: 700 0.95rem var(--font-body); color: var(--ink); cursor: pointer; padding: 0;
+}
+.sv-num[aria-pressed="true"] { background: var(--ink); color: #fff; }
+.sv-scale-ends { display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--ink-soft); margin-top: 6px; }
+.sv-input {
+  width: 100%; min-height: 48px; padding: 10px 12px;
+  border: 2px solid var(--line); border-radius: 10px; background: #fff;
+  font: 500 1rem var(--font-body); color: var(--ink);
+}
+.sv-input:focus { border-color: var(--blue); outline: none; }
+.sv-error { color: #b3261e; font-weight: 700; min-height: 1.4em; margin: 18px 0 8px; }
+.sv-submit { width: 100%; }
+.sv-done { text-align: center; padding: 40px 0; }
+.sv-done p { color: var(--ink-soft); }
+.sv-done .hero-actions { justify-content: center; }
+
+/* ---------- reviews ---------- */
+.rv-list { display: grid; gap: 12px; }
+@media (min-width: 800px) { .rv-list { grid-template-columns: repeat(3, 1fr); } }
+.rv-card {
+  margin: 0;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-top: 5px solid var(--cat);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  display: grid;
+  gap: 6px;
+  align-content: start;
+}
+.rv-stars { color: #f5a623; letter-spacing: 2px; }
+.rv-text { margin: 0; font-size: 1.02rem; }
+.rv-meta { font-size: 0.88rem; color: var(--ink-soft); font-weight: 600; }
+.rv-row {
+  display: flex; justify-content: space-between; align-items: center; gap: 10px;
+  margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--line);
+  font-size: 0.88rem;
+}
+.rv-avg { color: #c47f00; font-weight: 700; }
+.rv-link { font-weight: 700; margin-left: auto; }
+.rv-inline { margin: 10px 0 0; font-size: 0.92rem; font-style: italic; color: var(--ink-soft); }
+
+/* ---------- admin: reviews & surveys ---------- */
+.sv-admin { max-width: 720px; margin: 0 auto; padding-bottom: 40px; }
+.sv-entry {
+  display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; align-items: center;
+  padding: 16px; margin: 0 0 28px; border-radius: 16px; background: var(--ink); color: #fff; text-decoration: none;
+}
+.sv-entry:hover { color: #fff; }
+.sv-entry strong { font-size: 1.05rem; }
+.sv-entry span:not(.ed-chev) { grid-column: 1; color: #d9d0dd; font-size: 0.9rem; }
+.sv-entry .ed-chev { grid-row: 1 / 3; grid-column: 2; color: #fff; }
+.rv-filter { margin-bottom: 12px; }
+.rva-list { display: grid; gap: 10px; }
+.rva-card {
+  background: var(--card); border: 1px solid var(--line); border-left: 5px solid var(--cat);
+  border-radius: 14px; padding: 14px 16px; display: grid; gap: 4px;
+}
+.rva-top { display: flex; justify-content: space-between; align-items: center; }
+.rva-date, .rva-meta { font-size: 0.85rem; color: var(--ink-soft); margin: 0; }
+.rva-tags { margin: 0; font-size: 0.9rem; color: var(--ink-soft); }
+.rva-private { margin: 4px 0 0; font-size: 0.82rem; color: var(--blue-ink); background: var(--blue-tint); border-radius: 8px; padding: 6px 8px; }
+.rva-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.rva-actions button { min-height: 42px; padding: 0 14px; border: 0; border-radius: 12px; font: 800 0.9rem var(--font-body); cursor: pointer; }
+.svl-row { padding: 14px 16px; border-bottom: 1px solid #f0ebe5; display: grid; gap: 10px; }
+.svl-row:last-child { border-bottom: 0; }
+.svl-text { display: grid; gap: 2px; }
+.svl-sub { font-size: 0.88rem; color: var(--ink-soft); }
+.svl-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.svl-actions .chip { min-height: 38px; font-size: 0.88rem; }
+#sv-msg { color: var(--green-ink); margin-top: 12px; }
+
+/* results + builder sheets */
+dialog.sheet-tall { max-height: 94vh; }
+.sheet-tall .sheet-inner { max-height: 94vh; }
+.res-total { font: 800 1.2rem var(--font-display); margin: 14px 0 0; }
+.res-q { margin-top: 20px; padding-top: 14px; border-top: 1px solid #f0ebe5; }
+.res-q h3 { font-size: 1rem; margin: 0; letter-spacing: 0; font-family: var(--font-body); }
+.res-sub { margin: 2px 0 8px; font-size: 0.85rem; color: var(--ink-soft); }
+.res-big { margin: 4px 0 8px; font: 800 1.8rem var(--font-display); }
+.res-bars { display: grid; gap: 6px; }
+.res-row { display: grid; grid-template-columns: minmax(0, 9em) 1fr auto; gap: 8px; align-items: center; font-size: 0.9rem; padding: 3px 0; }
+.res-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.res-bar { height: 12px; background: #f3eee9; border-radius: 6px; overflow: hidden; }
+.res-fill { display: block; height: 100%; background: var(--pink); border-radius: 6px; }
+.res-num { font-variant-numeric: tabular-nums; color: var(--ink-soft); font-size: 0.85rem; white-space: nowrap; }
+.res-texts { margin: 0; padding-left: 1.1em; display: grid; gap: 6px; font-size: 0.95rem; }
+.bq-list { display: grid; gap: 12px; }
+.bq { background: #faf7f3; border-radius: 14px; padding: 12px; display: grid; gap: 8px; }
+.bq-num { font: 700 0.8rem var(--font-body); color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.06em; }
+.bq .sheet-input { margin-top: 0; }
+.bq-types .chip { min-height: 36px; padding: 0 10px; font-size: 0.84rem; }
+.bq-tools { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.bq-tools .chip { min-height: 36px; font-size: 0.85rem; }
+.bq-req { margin-right: auto; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; }
+.add-class {
+  width: 100%; min-height: 48px; margin-top: 10px;
+  border: 2px dashed #d8cfc6; border-radius: 12px;
+  background: transparent; color: var(--ink);
+  font: 700 0.95rem var(--font-body); cursor: pointer;
+}
+.add-class:hover { border-color: var(--ink); }
