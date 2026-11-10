@@ -1756,7 +1756,7 @@ dialog.sheet[open] { animation: sheet-up 0.22s ease-out; }
 .slot-entry .slot-price:not(.is-special) { color: var(--ink-soft); font-weight: 500; }
 
 /* ---------- schedule views: By day / By class / Week ---------- */
-#view-toggle { grid-template-columns: repeat(3, 1fr); max-width: 480px; }
+#view-toggle { grid-template-columns: repeat(2, 1fr); max-width: 360px; }
 body:not(.view-grid) .week-grid { display: none !important; }
 body.view-grid .day-list, body.view-grid .day-tabs,
 body.view-grid #class-list, body.view-by-class .week-grid { display: none !important; }

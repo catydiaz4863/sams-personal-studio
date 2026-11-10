@@ -302,7 +302,7 @@
     var saved = null;
     try { saved = localStorage.getItem("sps-schedule-view"); } catch (e) { /* ignore */ }
     // phones open on "By day", computers on the weekly grid
-    setView(["day", "class", "grid"].indexOf(saved) !== -1 ? saved : (window.innerWidth >= 960 ? "grid" : "day"));
+    setView(["day", "grid"].indexOf(saved) !== -1 ? saved : (window.innerWidth >= 960 ? "grid" : "day"));
 
     // ---- desktop grid (rows = time slots, columns = days) ----
     var times = Array.from(new Set(classes.map(function (c) { return c.time; }))).sort();
