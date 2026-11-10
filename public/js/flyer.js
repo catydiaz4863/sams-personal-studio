@@ -147,7 +147,9 @@
 
       // ---------- grid ----------
       var classes = (schedule.classes || []).filter(function (c) { return c.name && c.time && c.day; });
-      var days = S.DAYS.filter(function (d) { return classes.some(function (c) { return c.day === d.key; }); });
+      var closedDays = schedule.closed || [];
+      var pk = S.packagesOf(classes, schedule);
+      var days = S.DAYS.filter(function (d) { return closedDays.indexOf(d.key) !== -1 || classes.some(function (c) { return c.day === d.key; }); });
       var times = Array.from(new Set(classes.map(function (c) { return c.time; }))).sort();
 
       var footerH = story ? 400 : 250;
@@ -212,7 +214,17 @@
           days.forEach(function (d, ci) {
             var cx = gx + timeW + colW * ci;
             var here = classes.filter(function (c) { return c.day === d.key && c.time === time; });
-            if (!here.length) return;
+            if (!here.length) {
+              if (closedDays.indexOf(d.key) === -1) return;
+              roundRect(ctx, cx + pad, ry + pad, colW - pad * 2, rowH - pad * 2, 12);
+              ctx.fillStyle = "#efe8e1";
+              ctx.fill();
+              ctx.fillStyle = C.soft;
+              ctx.textAlign = "center";
+              ctx.font = "800 " + (story ? 24 : 21) + "px " + BODY;
+              ctx.fillText("CLOSED", cx + colW / 2, ry + rowH / 2 + 8);
+              return;
+            }
             var cellH = (rowH - pad * 2 - (here.length - 1) * 6) / here.length;
             here.forEach(function (c, k) {
               var cy = ry + pad + k * (cellH + 6);
@@ -227,7 +239,13 @@
               ctx.fillRect(cx + pad, cy, colW - pad * 2, 7);
               ctx.restore();
               var box = colW - pad * 2 - 16;
-              var fit = fitText(ctx, c.name, "800", BODY, story ? 30 : 26, 15, box, cellH - 18, 3);
+              // specials show their times / price, like "Intro to Spin (10:00–11:30) $85"
+              var p = pk.byClass(c), extra = [];
+              if (p.len !== 60) extra.push("(" + S.formatTime(p.time).replace(/ [AP]M/, "") + "–" + S.formatTime(p.end).replace(/ [AP]M/, "") + ")");
+              if (p.onSale) extra.push("$" + p.sale.price + " sale");
+              else if (p.price != null) extra.push("$" + p.price);
+              var label = c.name + (extra.length ? " " + extra.join(" ") : "");
+              var fit = fitText(ctx, label, "800", BODY, story ? 30 : 26, 13, box, cellH - 18, 4);
               ctx.fillStyle = C.ink;
               ctx.font = "800 " + fit.size + "px " + BODY;
               var lh3 = fit.size * 1.12;

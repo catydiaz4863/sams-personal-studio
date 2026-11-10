@@ -115,6 +115,21 @@
         <p class="sheet-label"><label for="time-select">Time</label></p>
         <select id="time-select" class="sheet-select"></select>
 
+        <details class="more-opts" id="more-opts">
+          <summary>More options <span class="opt" id="more-sum">length, custom price, sale</span></summary>
+          <p class="sheet-label">Length</p>
+          <div class="chips" id="len-chips"></div>
+          <label class="sheet-label" for="pkg-price">Custom price <span class="opt">(leave empty for the standard price)</span></label>
+          <span class="money"><span>$</span><input id="pkg-price" type="number" min="0" max="9999" inputmode="numeric"><span class="hint" id="std-price"></span></span>
+          <p class="sheet-label">Sale <span class="opt">(optional)</span></p>
+          <div class="sale-row">
+            <span class="money"><span>$</span><input id="sale-price" type="number" min="0" max="9999" inputmode="numeric" placeholder="Sale"></span>
+            <input id="sale-label" class="sheet-input" type="text" maxlength="30" placeholder="e.g. Black Friday">
+          </div>
+          <label class="sheet-label" for="sale-until">Sale ends <span class="opt">(optional)</span></label>
+          <input id="sale-until" class="sheet-input" type="date">
+        </details>
+
         <p class="sheet-warn" id="sheet-warn" hidden></p>
         <p class="sheet-error" id="sheet-error" role="alert"></p>
 
@@ -133,6 +148,8 @@
         <h2 id="settings-title" tabindex="-1" autofocus>Note &amp; prices</h2>
         <label class="sheet-label" for="note">Note at the top of the schedule</label>
         <textarea id="note" class="sheet-input" maxlength="300" rows="3" placeholder="New students: $30 one-time registration fee. Text us to save your spot."></textarea>
+        <p class="sheet-label" id="closed-label">Closed this month <span class="opt">(optional)</span></p>
+        <div class="chips days" id="closed-chips"></div>
         <div class="price-fields">
           <label>Twice a week <span class="money"><span>$</span><input id="price-twice" type="number" min="0" max="9999" inputmode="numeric"></span><span class="hint">per class, per month</span></label>
           <label>Once a week <span class="money"><span>$</span><input id="price-once" type="number" min="0" max="9999" inputmode="numeric"></span><span class="hint">per class, per month</span></label>

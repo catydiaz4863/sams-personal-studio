@@ -5,7 +5,7 @@ const KEY = "schedule";
 const PREVIOUS_KEY = "schedule:previous";
 const DAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
 const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
-const DEFAULT_PRICES = { twice: 100, once: 75, registration: 30 };
+const DEFAULT_PRICES = { twice: 100, once: 70, registration: 30 };
 const EVENT_TYPES = ["workshop", "recital", "dropin", "party", "other"];
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -56,6 +56,7 @@ function shape(raw, owner) {
     month: current ? monthLabel(current.key) : "",
     monthKey: current ? current.key : "",
     classes: current ? current.classes : [],
+    closed: current && current.closed ? current.closed : [],
     note: data.note || "",
     prices: data.prices,
     events: data.events || [],
@@ -68,6 +69,7 @@ function shape(raw, owner) {
       early: upcoming.early, open: upcoming.open || upcoming.early,
       phase: today >= (upcoming.open || upcoming.early) ? "open" : "early",
       classes: upcoming.classes,
+      closed: upcoming.closed || [],
     };
   }
   if (owner) {
@@ -136,7 +138,33 @@ function validateClasses(list, label) {
     if (!name) continue; // ignore blank rows
     if (!DAYS.includes(day)) return { error: `"${name}" has an unknown day.` };
     if (!TIME.test(String(time))) return { error: `"${name}" needs a start time.` };
-    classes.push({ day, time, name });
+    const item = { day, time, name };
+    // Package extras (all optional): pkg groups the days of one class,
+    // len = minutes, price = custom monthly price, sale = { price, label, until }.
+    if (/^[a-z0-9]{1,16}$/.test(String(c.pkg || ""))) item.pkg = c.pkg;
+    if (c.len !== undefined && c.len !== null && c.len !== "") {
+      const len = Number(c.len);
+      if (!Number.isInteger(len) || len < 15 || len > 240) return { error: `"${name}" has an invalid length.` };
+      if (len !== 60) item.len = len;
+    }
+    if (c.price !== undefined && c.price !== null && c.price !== "") {
+      const n = Number(c.price);
+      if (!Number.isInteger(n) || n < 0 || n > 9999) return { error: `"${name}" price must be whole dollars.` };
+      item.price = n;
+    }
+    if (c.sale && c.sale.price !== undefined && c.sale.price !== "") {
+      const n = Number(c.sale.price);
+      if (!Number.isInteger(n) || n < 0 || n > 9999) return { error: `"${name}" sale price must be whole dollars.` };
+      const sale = { price: n };
+      const lab = cleanText(c.sale.label, 30);
+      if (lab) sale.label = lab;
+      if (c.sale.until) {
+        if (!DATE.test(String(c.sale.until))) return { error: `"${name}" has an invalid sale end date.` };
+        sale.until = c.sale.until;
+      }
+      item.sale = sale;
+    }
+    classes.push(item);
   }
   classes.sort((a, b) =>
     DAYS.indexOf(a.day) - DAYS.indexOf(b.day) || a.time.localeCompare(b.time));
@@ -160,6 +188,10 @@ function validate(body) {
     const v = validateClasses(x.classes, label);
     if (v.error) return v;
     const item = { key: x.key, classes: v.classes };
+    if (Array.isArray(x.closed)) {
+      const closed = [...new Set(x.closed.filter((d) => DAYS.includes(d)))];
+      if (closed.length) item.closed = closed;
+    }
     for (const f of ["start", "early", "open"]) {
       if (x[f] === undefined || x[f] === null || x[f] === "") continue;
       if (!DATE.test(String(x[f])) || isNaN(Date.parse(x[f] + "T00:00:00Z"))) return { error: `${label}: invalid ${f} date.` };

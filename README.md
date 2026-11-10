@@ -44,6 +44,10 @@ Pages are served at short addresses: `/schedule`, `/classes`, `/events`, `/about
   site as "Coming up" from its `early` date (early registration for current
   students), says "open to everyone" from its `open` date, and replaces the
   current schedule on its `start` date. Dates use McAllen (Central) time.
+- Each class is a package: its rows share a `pkg` id (its days). Optional per
+  package: `len` (minutes), `price` (custom monthly price), `sale`
+  ({ price, label, until }). Standard price: 2+ days = twice-a-week price,
+  1 day = once-a-week price. A schedule can list `closed` days.
 - Every save keeps the previous version under the KV key `schedule:previous`.
 - `public/data/schedule.json` is the starter schedule, used until the first save.
 

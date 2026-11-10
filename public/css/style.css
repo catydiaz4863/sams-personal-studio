@@ -619,9 +619,7 @@ p { margin: 0 0 1em; }
 }
 
 /* desktop: weekly grid like the flyer */
-.week-grid { display: none; }
-@media (min-width: 960px) {
-  .day-list { display: none; }
+@media all {
   .week-grid {
     display: block;
     background: var(--card);
@@ -1087,9 +1085,8 @@ body.admin { padding-bottom: 0; }
 }
 
 /* ---------- schedule: "By day / By class" switch (phones & tablets) ---------- */
-.view-toggle { display: none; }
 .class-list { display: none; }
-@media (max-width: 959px) {
+@media all {
   .view-toggle {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -1724,3 +1721,64 @@ dialog.sheet[open] { animation: sheet-up 0.22s ease-out; }
 @media (min-width: 1000px) { .panel { min-height: 240px; } }
 .month-tabs + .next-banner { margin: 0 0 16px; }
 #sched-note-text a { font-weight: 700; color: var(--pink-ink); }
+/* class panel: More options */
+.more-opts { margin-top: 16px; border-radius: 14px; background: #faf7f3; padding: 0 14px; }
+.more-opts summary { list-style: none; cursor: pointer; padding: 14px 0; font-weight: 700; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.more-opts summary::-webkit-details-marker { display: none; }
+.more-opts summary::after { content: "+"; margin-left: auto; font-size: 1.2rem; color: var(--ink-soft); }
+.more-opts[open] summary::after { content: "–"; }
+.more-opts[open] { padding-bottom: 14px; }
+.more-opts .sheet-label:first-of-type { margin-top: 0; }
+.sale-row { display: grid; grid-template-columns: auto 1fr; gap: 8px; align-items: center; }
+.sale-row .sheet-input { margin-top: 0; }
+.money .hint { margin-left: 8px; font: 500 0.82rem var(--font-body); color: var(--ink-soft); }
+
+/* ---------- packages ---------- */
+.pkg-explain { margin: 0 0 14px; padding: 10px 14px; border-radius: 12px; background: var(--blue-tint); font-size: 0.93rem; }
+.class-name-wrap { display: grid; gap: 1px; min-width: 0; }
+.pkg-meta { font-size: 0.82rem; color: var(--ink-soft); font-weight: 500; padding-left: 22px; }
+.pkg-meta.is-special { color: var(--pink-ink); font-weight: 700; }
+.sale-tag { display: inline-block; padding: 1px 7px; border-radius: 999px; background: #b3261e; color: #fff; font: 700 0.7rem var(--font-body); text-transform: uppercase; letter-spacing: 0.05em; }
+.slot-price { font-size: 0.85rem; }
+.slot-price.is-special { color: var(--pink-ink); font-weight: 700; }
+.closed-row { color: var(--ink-soft); font-style: italic; }
+@media all {
+  .slot { flex-direction: column; justify-content: center; align-items: center; text-align: center; gap: 2px; }
+  .slot-days { font-size: 0.75rem; font-weight: 600; color: var(--ink-soft); }
+  .slot-special { font-size: 0.75rem; font-weight: 800; color: var(--pink-ink); }
+  .week-grid td.closed-cell { background: #efe8e1; color: var(--ink-soft); font: 700 0.8rem var(--font-body); text-transform: uppercase; letter-spacing: 0.08em; }
+}
+.slot-entry .slot-price { display: block; }
+@media all {
+  .week-grid .slot { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; text-align: center; }
+  .week-grid .slot > span { display: block; }
+}
+.slot-entry .slot-price:not(.is-special) { color: var(--ink-soft); font-weight: 500; }
+
+/* ---------- schedule views: By day / By class / Week ---------- */
+#view-toggle { grid-template-columns: repeat(2, 1fr); max-width: 360px; }
+body:not(.view-grid) .week-grid { display: none !important; }
+body.view-grid .day-list, body.view-grid .day-tabs,
+body.view-grid #class-list, body.view-by-class .week-grid { display: none !important; }
+@media (min-width: 960px) {
+  .day-list { grid-template-columns: repeat(3, 1fr); align-items: start; }
+  .class-list:not([hidden]) { grid-template-columns: 1fr 1fr; align-items: start; }
+}
+/* Week grid on phones: swipe sideways, time column stays put */
+@media (max-width: 959px) {
+  .week-grid { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .week-grid table { min-width: 640px; }
+  .week-grid th, .week-grid td { padding: 5px; }
+  .week-grid thead th { padding: 10px 4px; font-size: 0.78rem; }
+  .week-grid tbody th { position: sticky; left: 0; z-index: 1; font-size: 0.8rem; width: 5.2em; }
+  .week-grid col.time { width: 5.2em; }
+  .week-grid .slot { padding: 8px 4px; font-size: 0.8rem; border-radius: 8px; }
+  .slot-days, .slot-special { font-size: 0.68rem !important; }
+  .week-grid td.closed-cell { font-size: 0.68rem; }
+  .grid-hint { display: block; font-size: 0.82rem; color: var(--ink-soft); margin: 0 0 8px; }
+}
+@media (min-width: 960px) { .grid-hint { display: none; } }
+body:not(.view-grid) .grid-hint { display: none !important; }
+@media (max-width: 959px) {
+  .week-grid thead th:first-child { position: sticky; left: 0; z-index: 2; }
+}
