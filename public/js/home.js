@@ -12,9 +12,8 @@
       var a = S.nextAnnouncement(data.next);
       banner.textContent = "";
       banner.appendChild(S.el("span", { class: "nb-eyebrow", text: "Coming up" }));
-      banner.appendChild(S.el("strong", { text: a.title }));
-      banner.appendChild(S.el("span", { class: "nb-text", text: a.text }));
-      banner.appendChild(S.el("span", { class: "nb-link", text: "See the " + data.next.month.split(" ")[0] + " schedule →" }));
+      banner.appendChild(S.el("span", { class: "nb-body" }, [S.el("strong", { text: a.title }), S.el("span", { class: "nb-text", text: a.text })]));
+      banner.appendChild(S.el("span", { class: "nb-link", text: "See " + data.next.month.split(" ")[0] + " →" }));
       banner.hidden = false;
     }
     var classes = data.classes || [];

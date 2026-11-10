@@ -154,9 +154,9 @@
     var d = function (ymd) { return parseDate(ymd).toLocaleDateString("en-US", { month: "short", day: "numeric" }); };
     if (next.phase === "early") return {
       title: name + " schedule is out",
-      text: "Early registration is open for current students. Opens to everyone " + d(next.open) + ". Starts " + d(next.start) + "."
+      text: "Current students can register now · everyone from " + d(next.open)
     };
-    return { title: name + " registration is open", text: "Open to everyone. Starts " + d(next.start) + "." };
+    return { title: name + " registration is open", text: "Open to everyone · starts " + d(next.start) };
   }
 
   window.SPS = {

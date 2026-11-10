@@ -82,8 +82,9 @@
         data = Object.assign({}, data, { month: data.next.month, classes: data.next.classes, note: "" });
       } else {
         var box = el("a", { class: "next-banner", href: "/schedule?m=next" }, [
-          el("span", { class: "nb-eyebrow", text: "Coming up" }), el("strong", { text: ann.title }),
-          el("span", { class: "nb-text", text: ann.text }), el("span", { class: "nb-link", text: "See the " + nxt + " schedule →" })
+          el("span", { class: "nb-eyebrow", text: "Coming up" }),
+          el("span", { class: "nb-body" }, [el("strong", { text: ann.title }), el("span", { class: "nb-text", text: ann.text })]),
+          el("span", { class: "nb-link", text: "See " + nxt + " →" })
         ]);
         tabs.parentNode.insertBefore(box, tabs.nextSibling);
       }
