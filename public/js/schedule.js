@@ -77,7 +77,19 @@
           el("a", { href: "/schedule", text: cur }), document.createTextNode(".")
         ]);
         monthEl.parentNode.insertBefore(label, monthEl);
-        noteEl.textContent = ann.text;
+        // "How to register" with a tappable Book now (texts Sam about this month)
+        var book = el("a", { href: S.smsLink("Hi! I'd like to sign up for " + nxt + " classes." + (data.next.phase === "early" ? " I'm a current student." : "")), text: "Book now" });
+        var openDay = S.formatDate(data.next.open, { month: "short", day: "numeric" });
+        noteEl.textContent = "";
+        if (data.next.phase === "early") {
+          noteEl.appendChild(document.createTextNode("Current students, tap "));
+          noteEl.appendChild(book);
+          noteEl.appendChild(document.createTextNode(" to save your spot. General registration opens " + openDay + "."));
+        } else {
+          noteEl.appendChild(document.createTextNode("Tap "));
+          noteEl.appendChild(book);
+          noteEl.appendChild(document.createTextNode(" and send us your name and class."));
+        }
         if (signup) {
           signup.href = S.smsLink("Hi! I'd like to sign up for " + nxt + " classes." + (data.next.phase === "early" ? " I'm a current student." : ""));
           signup.textContent = data.next.phase === "early" ? "Current students: text to sign up" : "Text to sign up for " + nxt;

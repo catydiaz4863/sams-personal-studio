@@ -154,7 +154,7 @@
     var d = function (ymd) { return parseDate(ymd).toLocaleDateString("en-US", { month: "short", day: "numeric" }); };
     if (next.phase === "early") return {
       title: name + " schedule is out",
-      text: "Current students can register now · everyone from " + d(next.open)
+      text: "Current students can register now · general registration opens " + d(next.open)
     };
     return { title: name + " registration is open", text: "Open to everyone · starts " + d(next.start) };
   }

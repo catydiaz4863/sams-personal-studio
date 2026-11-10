@@ -1723,3 +1723,4 @@ dialog.sheet[open] { animation: sheet-up 0.22s ease-out; }
 .next-banner + .today { margin-top: 14px; }
 @media (min-width: 1000px) { .panel { min-height: 240px; } }
 .month-tabs + .next-banner { margin: 0 0 16px; }
+#sched-note-text a { font-weight: 700; color: var(--pink-ink); }
