@@ -4,9 +4,7 @@
   var S = window.SPS;
   var el = S.el;
 
-  var surveyFor = {};   // event id -> [{ id, title }]
-
-  function card(e, past) {
+  function card(e) {
     var type = S.eventType(e.type);
     var d = S.parseDate(e.date);
     var when = e.time ? S.formatTime(e.time) : "Time TBA";
@@ -19,11 +17,8 @@
       el("p", { class: "ev-when", text: when })
     ];
     if (e.description) body.push(el("p", { class: "ev-desc", text: e.description }));
-    var foot = past ? [] : [el("a", { class: "btn btn-small btn-pink", href: signup, text: "Text to sign up" })];
-    (surveyFor[e.id] || []).forEach(function (sv) {
-      foot.push(el("a", { class: "btn btn-small " + (past ? "btn-pink" : "btn-ghost"), href: "/survey?id=" + encodeURIComponent(sv.id), text: past ? "Share your feedback" : sv.title }));
-    });
-    if (e.price != null && !past) foot.unshift(el("span", { class: "ev-price", text: e.price === 0 ? "Free" : "$" + e.price }));
+    var foot = [el("a", { class: "btn btn-small btn-pink", href: signup, text: "Text to sign up" })];
+    if (e.price != null) foot.unshift(el("span", { class: "ev-price", text: e.price === 0 ? "Free" : "$" + e.price }));
     body.push(el("div", { class: "ev-foot" }, foot));
 
     var flyer = null;
@@ -43,18 +38,8 @@
     ]);
   }
 
-  Promise.all([
-    S.loadSchedule(),
-    fetch("/api/survey-links").then(function (r) { return r.ok ? r.json() : []; }).catch(function () { return []; })
-  ]).then(function (res) {
-    var data = res[0];
-    ((res[1] && res[1].links) || []).forEach(function (sv) { (surveyFor[sv.event] = surveyFor[sv.event] || []).push(sv); });
+  S.loadSchedule().then(function (data) {
     var events = S.upcomingEvents(data);
-    // events from the last 2 weeks that have a feedback survey
-    var today = S.localDateKey();
-    var twoWeeks = S.localDateKey(new Date(Date.now() - 14 * 864e5));
-    var recent = (data.events || []).filter(function (e) { return e.date < today && e.date >= twoWeeks && surveyFor[e.id]; })
-      .sort(function (a, b) { return b.date.localeCompare(a.date); });
 
     // Events page
     var list = document.getElementById("event-list");
@@ -71,12 +56,6 @@
         ]));
       } else {
         events.forEach(function (e) { list.appendChild(card(e)); });
-      }
-      if (recent.length) {
-        var past = el("div", { class: "ev-list ev-recent" });
-        recent.forEach(function (e) { past.appendChild(card(e, true)); });
-        list.parentNode.insertBefore(el("h2", { class: "ev-recent-h", text: "Were you there? Tell us how it went" }), list.nextSibling);
-        list.parentNode.insertBefore(past, list.nextSibling.nextSibling);
       }
     }
 

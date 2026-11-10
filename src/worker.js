@@ -6,7 +6,6 @@ import * as logout from "./api/logout.js";
 import * as session from "./api/session.js";
 import * as schedule from "./api/schedule.js";
 import * as media from "./api/media.js";
-import { survey, reviews, surveyLinks, adminSurveys, adminResponses, adminLinks } from "./api/surveys.js";
 
 const ROUTES = {
   "/api/login": login,
@@ -14,12 +13,6 @@ const ROUTES = {
   "/api/session": session,
   "/api/schedule": schedule,
   "/api/media": media,
-  "/api/survey": survey,
-  "/api/reviews": reviews,
-  "/api/survey-links": surveyLinks,
-  "/api/admin/surveys": adminSurveys,
-  "/api/admin/responses": adminResponses,
-  "/api/admin/links": adminLinks,
 };
 
 // "GET" -> "onRequestGet", "PUT" -> "onRequestPut", ...

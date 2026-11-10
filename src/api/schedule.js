@@ -103,10 +103,7 @@ function validate(body) {
       return { error: `"${title}" needs a date.` };
     }
     if (date < cutoff) continue;
-    // Stable id so surveys can be attached to an event.
-    const id = /^[a-z0-9]{6,24}$/.test(String(e.id || "")) ? e.id
-      : Date.now().toString(36) + crypto.randomUUID().replace(/-/g, "").slice(0, 6);
-    const ev = { id, type, title, date };
+    const ev = { type, title, date };
     if (e.time) {
       if (!TIME.test(String(e.time))) return { error: `"${title}" has an invalid time.` };
       ev.time = e.time;

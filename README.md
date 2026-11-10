@@ -18,8 +18,6 @@ and `src/` handles the few `/api/*` requests.
 | Events, workshops & party rental | `public/events.html` |
 | About Sam | `public/about.html` |
 | Owner edit page (not linked anywhere) | `public/admin.html` |
-| Owner reviews & surveys | `public/admin-surveys.html` |
-| Shareable survey (any survey) | `public/survey.html?id=...` |
 
 Pages are served at short addresses: `/schedule`, `/classes`, `/events`, `/about`, `/contact`, `/admin`.
 
@@ -41,17 +39,6 @@ Pages are served at short addresses: `/schedule`, `/classes`, `/events`, `/about
 - Event flyer images are shrunk in the browser (max 1600px) and stored in KV
   under `media:<id>`, served at `/media/<id>`. Images no event uses are deleted
   on the next save.
-- Reviews & surveys (`src/api/surveys.js`): every survey has a link
-  (`/survey?id=review`, `/survey?id=<id>`). The built-in class review has fixed
-  questions (class, stars, tags, comment, name + private: how they heard about us,
-  0-10 recommend, how long they've trained). Responses are stored in KV as
-  `resp:<survey>:<id>`; nothing is public until Sam approves it, and approved
-  reviews are copied to `reviews:public` without the private answers. Sam sees
-  results and downloads a CSV on `/admin-surveys`. The class review is editable
-  (its class / stars / comment / name questions are locked). A custom survey can
-  be attached to an event (by the event's `id`); its button shows on that event's
-  card and for 14 days after the event. Spam: hidden honeypot field,
-  minimum fill time, 8 submissions per hour per IP.
 - Every save keeps the previous version under the KV key `schedule:previous`.
 - `public/data/schedule.json` is the starter schedule, used until the first save.
 
