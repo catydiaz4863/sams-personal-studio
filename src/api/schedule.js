@@ -9,15 +9,84 @@ const DEFAULT_PRICES = { twice: 100, once: 75, registration: 30 };
 const EVENT_TYPES = ["workshop", "recital", "dropin", "party", "other"];
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 
-// GET /api/schedule  (public)
-// Returns the saved schedule, or the starter file in /data/schedule.json if
-// the owner hasn't saved one yet.
-export async function onRequestGet({ request, env }) {
-  const saved = await env.SCHEDULE_KV.get(KEY);
-  if (saved) return json(JSON.parse(saved));
+// ---------- schedules by month ----------
+// Stored as schedules: [{ key: "2026-12", start, early, open, classes }].
+//   start = the day it replaces the previous schedule (automatic)
+//   early = early registration for current students (announcement appears)
+//   open  = registration opens to everyone
+// Dates follow the studio's clock (McAllen = Central time).
+const MONTH = /^\d{4}-\d{2}$/;
+function todayKey() {
+  const p = Object.fromEntries(new Intl.DateTimeFormat("en-US", { timeZone: "America/Chicago", year: "numeric", month: "2-digit", day: "2-digit" })
+    .formatToParts(new Date()).map((x) => [x.type, x.value]));
+  return `${p.year}-${p.month}-${p.day}`;
+}
+function addMonths(key, n) {
+  const [y, m] = key.split("-").map(Number);
+  const d = new Date(Date.UTC(y, m - 1 + n, 1));
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+}
+function monthLabel(key) {
+  const [y, m] = key.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, 1)).toLocaleString("en-US", { month: "long", year: "numeric", timeZone: "UTC" });
+}
 
+// Older saves had one "classes" list; treat it as the schedule running now.
+function normalize(data) {
+  if (Array.isArray(data.schedules)) return data;
+  return { ...data, schedules: [{ key: todayKey().slice(0, 7), start: "2000-01-01", classes: data.classes || [] }] };
+}
+
+// Which schedule is running today, and which one comes next.
+function pick(schedules, today) {
+  const sorted = schedules.slice().sort((a, b) => a.start.localeCompare(b.start));
+  const started = sorted.filter((x) => x.start <= today);
+  const current = started[started.length - 1] || sorted[0] || null;
+  const upcoming = sorted.find((x) => x.start > today && x !== current) || null;
+  return { current, upcoming };
+}
+
+// What the website gets. The upcoming schedule only shows once early
+// registration starts; the owner always sees everything.
+function shape(raw, owner) {
+  const data = normalize(raw);
+  const today = todayKey();
+  const { current, upcoming } = pick(data.schedules, today);
+  const out = {
+    month: current ? monthLabel(current.key) : "",
+    monthKey: current ? current.key : "",
+    classes: current ? current.classes : [],
+    note: data.note || "",
+    prices: data.prices,
+    events: data.events || [],
+    updatedAt: data.updatedAt,
+  };
+  if (current && current.start > today) out.startsOn = current.start; // nothing has started yet
+  if (upcoming && upcoming.early && today >= upcoming.early && upcoming.classes.length) {
+    out.next = {
+      month: monthLabel(upcoming.key), key: upcoming.key, start: upcoming.start,
+      early: upcoming.early, open: upcoming.open || upcoming.early,
+      phase: today >= (upcoming.open || upcoming.early) ? "open" : "early",
+      classes: upcoming.classes,
+    };
+  }
+  if (owner) {
+    out.today = today;
+    out.schedules = [current, upcoming].filter(Boolean).map((x) => ({ ...x, label: monthLabel(x.key) }));
+  }
+  return out;
+}
+
+async function loadRaw(env, request) {
+  const saved = await env.SCHEDULE_KV.get(KEY);
+  if (saved) return JSON.parse(saved);
   const starter = await env.ASSETS.fetch(new URL("/data/schedule.json", request.url));
-  return json(await starter.json());
+  return starter.json();
+}
+
+// GET /api/schedule  (public; the owner also gets next month's draft)
+export async function onRequestGet({ request, env }) {
+  return json(shape(await loadRaw(env, request), await isLoggedIn(request, env)));
 }
 
 // PUT /api/schedule  (owner only)
@@ -42,27 +111,25 @@ export async function onRequestPut({ request, env }) {
   if (current) await env.SCHEDULE_KV.put(PREVIOUS_KEY, current);
 
   await env.SCHEDULE_KV.put(KEY, JSON.stringify(result.data));
+  const saved = result.data;
   // Remove flyer images that no event uses anymore.
   try {
     await cleanupMedia(env, result.data.events.map((e) => e.image).filter(Boolean));
   } catch (err) {
     console.error("media cleanup failed", err);
   }
-  return json(result.data);
+  return json(shape(saved, true));
 }
 
 function cleanText(value, max) {
   return String(value == null ? "" : value).replace(/\s+/g, " ").trim().slice(0, max);
 }
 
-function validate(body) {
-  if (!body || typeof body !== "object" || !Array.isArray(body.classes)) {
-    return { error: "Schedule is missing its class list." };
-  }
-  if (body.classes.length > 200) return { error: "That's more than 200 classes." };
-
+function validateClasses(list, label) {
+  if (!Array.isArray(list)) return { error: `${label} is missing its class list.` };
+  if (list.length > 200) return { error: `${label} has more than 200 classes.` };
   const classes = [];
-  for (const c of body.classes) {
+  for (const c of list) {
     const name = cleanText(c && c.name, 60);
     const day = c && c.day;
     const time = c && c.time;
@@ -71,10 +138,43 @@ function validate(body) {
     if (!TIME.test(String(time))) return { error: `"${name}" needs a start time.` };
     classes.push({ day, time, name });
   }
-
   classes.sort((a, b) =>
     DAYS.indexOf(a.day) - DAYS.indexOf(b.day) || a.time.localeCompare(b.time));
+  return { classes };
+}
 
+function validate(body) {
+  if (!body || typeof body !== "object") return { error: "Bad request" };
+  const today = todayKey();
+  const list = Array.isArray(body.schedules) ? body.schedules
+    : Array.isArray(body.classes) ? [{ key: today.slice(0, 7), start: "2000-01-01", classes: body.classes }] : null;
+  if (!list) return { error: "Schedule is missing its class list." };
+  if (list.length > 4) return { error: "Too many schedules." };
+  let schedules = [];
+  const keys = new Set();
+  for (const x of list) {
+    if (!x || !MONTH.test(String(x.key))) return { error: "Unknown month." };
+    if (keys.has(x.key)) continue;
+    keys.add(x.key);
+    const label = monthLabel(x.key);
+    const v = validateClasses(x.classes, label);
+    if (v.error) return v;
+    const item = { key: x.key, classes: v.classes };
+    for (const f of ["start", "early", "open"]) {
+      if (x[f] === undefined || x[f] === null || x[f] === "") continue;
+      if (!DATE.test(String(x[f])) || isNaN(Date.parse(x[f] + "T00:00:00Z"))) return { error: `${label}: invalid ${f} date.` };
+      item[f] = x[f];
+    }
+    if (!item.start) return { error: `${label} needs a start date.` };
+    if (item.early && item.open && item.open < item.early) return { error: `${label}: registration for everyone can't be before early registration.` };
+    if (item.open && item.open > item.start) return { error: `${label}: registration should open before the schedule starts.` };
+    if (item.early && item.early > item.start) return { error: `${label}: early registration should be before the schedule starts.` };
+    schedules.push(item);
+  }
+  // Keep the schedule running now plus anything upcoming; older ones drop off.
+  const { current } = pick(schedules, today);
+  schedules = schedules.filter((x) => x === current || x.start > today);
+  schedules.sort((a, b) => a.start.localeCompare(b.start));
   // Monthly prices, in whole dollars: per class taken twice a week / once a week,
   // plus the one-time registration fee for new students.
   const prices = { ...DEFAULT_PRICES };
@@ -126,11 +226,10 @@ function validate(body) {
 
   return {
     data: {
-      month: cleanText(body.month, 40) || "This month",
       note: cleanText(body.note, 300),
       prices,
       events,
-      classes,
+      schedules,
       updatedAt: new Date().toISOString(),
     },
   };

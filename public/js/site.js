@@ -148,7 +148,19 @@
     return "sms:" + STUDIO_PHONE + "?&body=" + encodeURIComponent(message);
   }
 
+  // "Coming up" text for the next schedule (current students first, then everyone)
+  function nextAnnouncement(next) {
+    var name = next.month.split(" ")[0];
+    var d = function (ymd) { return parseDate(ymd).toLocaleDateString("en-US", { month: "short", day: "numeric" }); };
+    if (next.phase === "early") return {
+      title: name + " schedule is out",
+      text: "Early registration is open for current students. Opens to everyone " + d(next.open) + ". Starts " + d(next.start) + "."
+    };
+    return { title: name + " registration is open", text: "Open to everyone. Starts " + d(next.start) + "." };
+  }
+
   window.SPS = {
+    nextAnnouncement: nextAnnouncement,
     EVENT_TYPES: EVENT_TYPES,
     eventType: eventType,
     upcomingEvents: upcomingEvents,

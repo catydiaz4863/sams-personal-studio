@@ -112,8 +112,101 @@
     return names.length < 2 ? names.join("") : names.slice(0, -1).join(", ") + " & " + names[names.length - 1];
   }
 
+  // ---------- schedules: the one running now + the next one ----------
+  // Each schedule: { key: "2026-12", label, start, early, open, entries }
+  var scheds = [];
+  var viewIdx = 0;
+  var todayYMD = "";
+
+  function toEntries(classes) {
+    var list = [], byKey = {};
+    (classes || []).forEach(function (c) {
+      if (knownNames.indexOf(c.name) === -1) knownNames.push(c.name);
+      var key = c.name + "|" + c.time;
+      if (!byKey[key]) { byKey[key] = { id: nextId++, name: c.name, time: c.time, days: [] }; list.push(byKey[key]); }
+      if (byKey[key].days.indexOf(c.day) === -1) byKey[key].days.push(c.day);
+    });
+    return list;
+  }
+  function toClasses(list) {
+    var out = [];
+    list.forEach(function (e) { e.days.forEach(function (d) { out.push({ day: d, time: e.time, name: e.name }); }); });
+    return out;
+  }
+  function nextMonthKey(key) {
+    var p = key.split("-").map(Number);
+    var d = new Date(Date.UTC(p[0], p[1], 1));
+    return d.getUTCFullYear() + "-" + String(d.getUTCMonth() + 1).padStart(2, "0");
+  }
+  function labelOf(key) {
+    var p = key.split("-").map(Number);
+    return new Date(Date.UTC(p[0], p[1] - 1, 1)).toLocaleString("en-US", { month: "long", year: "numeric", timeZone: "UTC" });
+  }
+  function nameOf(x) { return x.label.split(" ")[0]; }
+  function shortDate(ymd) { return ymd ? S.formatDate(ymd, { month: "short", day: "numeric" }) : ""; }
+
+  // Status of the upcoming schedule, in plain words.
+  function upcomingStatus(x) {
+    if (!x.entries.length) return { tag: "Draft", text: "Add " + nameOf(x) + "'s classes, then set the dates below." };
+    if (!x.early) return { tag: "Draft", text: "Only you can see it. Set the early registration date to announce it on the website." };
+    if (todayYMD < x.early) return { tag: "Ready", text: "Announces on the website " + shortDate(x.early) + " (early registration for current students). Opens to everyone " + shortDate(x.open || x.early) + ". Replaces the current schedule " + shortDate(x.start) + "." };
+    if (todayYMD < (x.open || x.early)) return { tag: "Early reg", text: "Live as \u201ccoming up\u201d: early registration for current students. Opens to everyone " + shortDate(x.open) + ". Replaces the current schedule " + shortDate(x.start) + "." };
+    return { tag: "Open", text: "Live as \u201ccoming up\u201d: registration is open to everyone. Replaces the current schedule " + shortDate(x.start) + "." };
+  }
+
+  function dateField(label, value, hint, onChange) {
+    var input = el("input", { type: "date", class: "sheet-input" });
+    input.value = value || "";
+    input.addEventListener("change", function () { onChange(input.value); markDirty(); });
+    return el("label", { class: "sched-date" }, [el("span", { class: "sheet-label", text: label }), input, el("span", { class: "hint", text: hint })]);
+  }
+
+  function renderMonthBar() {
+    var bar = $("month-bar");
+    bar.textContent = "";
+    scheds.forEach(function (x, i) {
+      var tag = i === 0 ? "Now" : upcomingStatus(x).tag;
+      var b = el("button", { type: "button", "aria-pressed": String(i === viewIdx) }, [
+        document.createTextNode(nameOf(x) + " "), el("span", { class: "month-tag " + tag.toLowerCase().replace(/\s+/g, "-"), text: tag })
+      ]);
+      b.addEventListener("click", function () { showSched(i); });
+      bar.appendChild(b);
+    });
+
+    var card = $("publish-card");
+    card.textContent = "";
+    var x = scheds[viewIdx];
+    card.hidden = viewIdx === 0;
+    if (viewIdx > 0) {
+      var st = upcomingStatus(x);
+      card.className = "publish-card" + (st.tag === "Early reg" || st.tag === "Open" ? " is-live" : "");
+      card.appendChild(el("p", null, [el("strong", { text: nameOf(x) + " schedule · " }), document.createTextNode(st.text)]));
+      if (!x.entries.length && scheds[0].entries.length) {
+        var copyBtn = el("button", { type: "button", class: "btn btn-small btn-ghost", text: "Copy " + nameOf(scheds[0]) + "'s classes" });
+        copyBtn.addEventListener("click", function () {
+          scheds[0].entries.forEach(function (e) { x.entries.push({ id: nextId++, name: e.name, time: e.time, days: e.days.slice() }); });
+          markDirty();
+        });
+        card.appendChild(el("div", { class: "publish-actions" }, [copyBtn]));
+      }
+      card.appendChild(el("div", { class: "sched-dates" }, [
+        dateField("Early registration", x.early, "Current students. The announcement shows from this day.", function (v) { x.early = v; }),
+        dateField("Open to everyone", x.open, "Public registration opens.", function (v) { x.open = v; }),
+        dateField("Schedule starts", x.start, "Replaces " + nameOf(scheds[0]) + " on this day.", function (v) { x.start = v; })
+      ]));
+    }
+    $("admin-sub").textContent = (viewIdx === 0 ? "Running now" : "Upcoming") + " · Tap a class to change it.";
+  }
+
+  function showSched(i) {
+    viewIdx = i;
+    entries = scheds[i].entries;
+    undoBtn.hidden = true;
+    undoState = null;
+    render();
+  }
+
   function fillEditor(data) {
-    $("month").value = data.month || "";
     $("note").value = data.note || "";
     var prices = S.pricesOf(data);
     $("price-twice").value = prices.twice;
@@ -121,14 +214,19 @@
     $("price-registration").value = prices.registration;
 
     knownNames = KNOWN_NAMES.slice();
-    entries = [];
-    var byKey = {};
-    (data.classes || []).forEach(function (c) {
-      if (knownNames.indexOf(c.name) === -1) knownNames.push(c.name);
-      var key = c.name + "|" + c.time;
-      if (!byKey[key]) { byKey[key] = { id: nextId++, name: c.name, time: c.time, days: [] }; entries.push(byKey[key]); }
-      if (byKey[key].days.indexOf(c.day) === -1) byKey[key].days.push(c.day);
+    todayYMD = data.today || S.localDateKey();
+    var list = data.schedules && data.schedules.length ? data.schedules
+      : [{ key: (data.monthKey || todayYMD.slice(0, 7)), label: data.month, start: "2000-01-01", classes: data.classes || [] }];
+    scheds = list.map(function (x) {
+      return { key: x.key, label: x.label || labelOf(x.key), start: x.start, early: x.early || "", open: x.open || "", entries: toEntries(x.classes) };
     });
+    if (scheds.length < 2) {
+      // a fresh draft for next month, starting on the 1st
+      var nk = nextMonthKey(scheds[0].key);
+      scheds.push({ key: nk, label: labelOf(nk), start: nk + "-01", early: "", open: "", entries: [] });
+    }
+    if (viewIdx >= scheds.length) viewIdx = 0;
+    entries = scheds[viewIdx].entries;
     events = (data.events || []).map(function (e) {
       return { id: nextId++, type: e.type, title: e.title, date: e.date, time: e.time || "", price: e.price != null ? e.price : "", description: e.description || "", image: e.image || "" };
     });
@@ -217,7 +315,7 @@
       conflicts.forEach(function (c) { ul.appendChild(el("li", { text: c.text })); });
       conflictsEl.appendChild(ul);
     }
-    $("admin-sub").textContent = ($("month").value || "No month set") + " · Tap a class to change it.";
+    renderMonthBar();
     renderEvents();
     return conflicts;
   }
@@ -572,13 +670,22 @@
       if (e.image) o.image = e.image;
       return o;
     });
-    return { problem: problem, data: { month: $("month").value, note: $("note").value, prices: prices, events: evs, classes: classes } };
+    // An upcoming schedule with no classes yet isn't saved.
+    var out = scheds.filter(function (x, i) { return i === 0 || x.entries.length; }).map(function (x) {
+      var o = { key: x.key, start: x.start, classes: toClasses(x.entries) };
+      if (x.early) o.early = x.early;
+      if (x.open) o.open = x.open;
+      return o;
+    });
+    return { problem: problem, data: { note: $("note").value, prices: prices, events: evs, schedules: out },
+      // what the social media image uses: the schedule being viewed
+      view: { month: scheds[viewIdx].label, classes: toClasses(entries), prices: prices } };
   }
 
   saveBtn.addEventListener("click", function () {
     var result = collect();
     if (result.problem) {
-      setMsg("Prices must be whole dollars. Check Month & prices.", "error");
+      setMsg("Prices must be whole dollars. Check Note & prices.", "error");
       reveal(result.problem);
       return;
     }
@@ -619,18 +726,18 @@
     btn.addEventListener("click", function () {
       var result = collect();
       if (result.problem) {
-        flyerMsg.textContent = "Prices must be whole dollars. Check Month & prices.";
+        flyerMsg.textContent = "Prices must be whole dollars. Check Note & prices.";
         reveal(result.problem);
         return;
       }
       var format = btn.getAttribute("data-flyer");
       flyerMsg.textContent = "Making your image…";
-      window.SPSFlyer.render(result.data, format).then(function (canvas) {
+      window.SPSFlyer.render(result.view, format).then(function (canvas) {
         canvas.toBlob(function (blob) {
           flyerBlob = blob;
           if (flyerUrl) URL.revokeObjectURL(flyerUrl);
           flyerUrl = URL.createObjectURL(blob);
-          var name = "sams-studio-" + (result.data.month || "schedule").toLowerCase().replace(/[^a-z0-9]+/g, "-") + "-" + format + ".png";
+          var name = "sams-studio-" + (result.view.month || "schedule").toLowerCase().replace(/[^a-z0-9]+/g, "-") + "-" + format + ".png";
           flyerImg.src = flyerUrl;
           flyerImg.className = format;
           flyerDownload.href = flyerUrl;

@@ -6,6 +6,17 @@
   if (!box) return;
 
   S.loadSchedule().then(function (data) {
+    // "December schedule is out" link once Sam publishes next month
+    var banner = document.getElementById("next-banner");
+    if (banner && data.next) {
+      var a = S.nextAnnouncement(data.next);
+      banner.textContent = "";
+      banner.appendChild(S.el("span", { class: "nb-eyebrow", text: "Coming up" }));
+      banner.appendChild(S.el("strong", { text: a.title }));
+      banner.appendChild(S.el("span", { class: "nb-text", text: a.text }));
+      banner.appendChild(S.el("span", { class: "nb-link", text: "See the " + data.next.month.split(" ")[0] + " schedule →" }));
+      banner.hidden = false;
+    }
     var classes = data.classes || [];
     if (!classes.length) return;
 

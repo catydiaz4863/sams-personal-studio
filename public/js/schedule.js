@@ -54,6 +54,40 @@
   });
 
   function render(data) {
+    // The next schedule shows from early registration on: /schedule?m=next
+    var wantNext = new URLSearchParams(location.search).get("m") === "next";
+    if (data.next) {
+      var cur = data.month.split(" ")[0], nxt = data.next.month.split(" ")[0];
+      var tabs = document.getElementById("month-tabs");
+      [[cur + " · now", "/schedule", !wantNext], ["Coming up: " + nxt, "/schedule?m=next", wantNext]].forEach(function (t) {
+        tabs.appendChild(el("a", { href: t[1], "aria-current": t[2] ? "page" : "false", text: t[0] }));
+      });
+      tabs.hidden = false;
+      var ann = S.nextAnnouncement(data.next);
+      var signup = document.querySelector(".sched-note a");
+      if (wantNext) {
+        // Make it impossible to mistake for this month's schedule.
+        var start = S.formatDate(data.next.start, { month: "long", day: "numeric" });
+        var label = el("p", { class: "upcoming-label" }, [
+          el("strong", { text: "Upcoming schedule · starts " + start + ". " }),
+          document.createTextNode("For this month's classes, see "),
+          el("a", { href: "/schedule", text: cur }), document.createTextNode(".")
+        ]);
+        monthEl.parentNode.insertBefore(label, monthEl);
+        noteEl.textContent = ann.text;
+        if (signup) {
+          signup.href = S.smsLink("Hi! I'd like to sign up for " + nxt + " classes." + (data.next.phase === "early" ? " I'm a current student." : ""));
+          signup.textContent = data.next.phase === "early" ? "Current students: text to sign up" : "Text to sign up for " + nxt;
+        }
+        data = Object.assign({}, data, { month: data.next.month, classes: data.next.classes, note: "" });
+      } else {
+        var box = el("a", { class: "next-banner", href: "/schedule?m=next" }, [
+          el("span", { class: "nb-eyebrow", text: "Coming up" }), el("strong", { text: ann.title }),
+          el("span", { class: "nb-text", text: ann.text }), el("span", { class: "nb-link", text: "See the " + nxt + " schedule →" })
+        ]);
+        tabs.parentNode.insertBefore(box, tabs.nextSibling);
+      }
+    }
     var classes = (data.classes || []).map(function (c) {
       return { day: c.day, time: c.time, name: c.name, cat: S.categoryOf(c.name) };
     });

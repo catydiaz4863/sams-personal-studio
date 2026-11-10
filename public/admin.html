@@ -35,8 +35,10 @@
   <section id="editor-view" hidden>
     <div class="admin-top">
       <h1>Your classes</h1>
-      <button type="button" class="link-btn" id="open-settings">Month &amp; prices</button>
+      <button type="button" class="link-btn" id="open-settings">Note &amp; prices</button>
     </div>
+    <div class="view-toggle month-bar" id="month-bar" role="tablist" aria-label="Which month"></div>
+    <div class="publish-card" id="publish-card" hidden></div>
     <p class="admin-sub" id="admin-sub">Each class with its days and time. Tap a class to change it.</p>
 
     <div class="conflict-box" id="conflicts" role="alert" hidden></div>
@@ -128,9 +130,7 @@
     <dialog class="sheet" id="settings-sheet" aria-labelledby="settings-title">
       <form method="dialog" class="sheet-inner">
         <div class="sheet-grab" aria-hidden="true"></div>
-        <h2 id="settings-title" tabindex="-1" autofocus>Month &amp; prices</h2>
-        <label class="sheet-label" for="month">Schedule title</label>
-        <input id="month" class="sheet-input" type="text" maxlength="40" placeholder="December 2026">
+        <h2 id="settings-title" tabindex="-1" autofocus>Note &amp; prices</h2>
         <label class="sheet-label" for="note">Note at the top of the schedule</label>
         <textarea id="note" class="sheet-input" maxlength="300" rows="3" placeholder="New students: $30 one-time registration fee. Text us to save your spot."></textarea>
         <div class="price-fields">
