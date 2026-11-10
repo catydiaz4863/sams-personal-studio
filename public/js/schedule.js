@@ -284,13 +284,15 @@
       });
 
     // ---- view switch (phones/tablets); remember the visitor's choice ----
+    // Three views: list by day, list by class, and the weekly grid (like the flyer).
     function setView(view) {
-      var byClass = view === "class";
       toggleEl.querySelectorAll("button").forEach(function (b) {
         b.setAttribute("aria-pressed", String(b.getAttribute("data-view") === view));
       });
-      classListEl.hidden = !byClass;
-      document.body.classList.toggle("view-by-class", byClass);
+      classListEl.hidden = view !== "class";
+      document.body.classList.toggle("view-by-class", view === "class");
+      document.body.classList.toggle("view-grid", view === "grid");
+      document.body.classList.toggle("view-day", view === "day");
       try { localStorage.setItem("sps-schedule-view", view); } catch (e) { /* private mode */ }
     }
     toggleEl.addEventListener("click", function (e) {
@@ -299,7 +301,8 @@
     });
     var saved = null;
     try { saved = localStorage.getItem("sps-schedule-view"); } catch (e) { /* ignore */ }
-    setView(saved === "class" ? "class" : "day");
+    // phones open on "By day", computers on the weekly grid
+    setView(["day", "class", "grid"].indexOf(saved) !== -1 ? saved : (window.innerWidth >= 960 ? "grid" : "day"));
 
     // ---- desktop grid (rows = time slots, columns = days) ----
     var times = Array.from(new Set(classes.map(function (c) { return c.time; }))).sort();

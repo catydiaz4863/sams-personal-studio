@@ -619,9 +619,7 @@ p { margin: 0 0 1em; }
 }
 
 /* desktop: weekly grid like the flyer */
-.week-grid { display: none; }
-@media (min-width: 960px) {
-  .day-list { display: none; }
+@media all {
   .week-grid {
     display: block;
     background: var(--card);
@@ -1087,9 +1085,8 @@ body.admin { padding-bottom: 0; }
 }
 
 /* ---------- schedule: "By day / By class" switch (phones & tablets) ---------- */
-.view-toggle { display: none; }
 .class-list { display: none; }
-@media (max-width: 959px) {
+@media all {
   .view-toggle {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -1745,15 +1742,43 @@ dialog.sheet[open] { animation: sheet-up 0.22s ease-out; }
 .slot-price { font-size: 0.85rem; }
 .slot-price.is-special { color: var(--pink-ink); font-weight: 700; }
 .closed-row { color: var(--ink-soft); font-style: italic; }
-@media (min-width: 960px) {
+@media all {
   .slot { flex-direction: column; justify-content: center; align-items: center; text-align: center; gap: 2px; }
   .slot-days { font-size: 0.75rem; font-weight: 600; color: var(--ink-soft); }
   .slot-special { font-size: 0.75rem; font-weight: 800; color: var(--pink-ink); }
   .week-grid td.closed-cell { background: #efe8e1; color: var(--ink-soft); font: 700 0.8rem var(--font-body); text-transform: uppercase; letter-spacing: 0.08em; }
 }
 .slot-entry .slot-price { display: block; }
-@media (min-width: 960px) {
+@media all {
   .week-grid .slot { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; text-align: center; }
   .week-grid .slot > span { display: block; }
 }
 .slot-entry .slot-price:not(.is-special) { color: var(--ink-soft); font-weight: 500; }
+
+/* ---------- schedule views: By day / By class / Week ---------- */
+#view-toggle { grid-template-columns: repeat(3, 1fr); max-width: 480px; }
+body:not(.view-grid) .week-grid { display: none !important; }
+body.view-grid .day-list, body.view-grid .day-tabs,
+body.view-grid #class-list, body.view-by-class .week-grid { display: none !important; }
+@media (min-width: 960px) {
+  .day-list { grid-template-columns: repeat(3, 1fr); align-items: start; }
+  .class-list:not([hidden]) { grid-template-columns: 1fr 1fr; align-items: start; }
+}
+/* Week grid on phones: swipe sideways, time column stays put */
+@media (max-width: 959px) {
+  .week-grid { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .week-grid table { min-width: 640px; }
+  .week-grid th, .week-grid td { padding: 5px; }
+  .week-grid thead th { padding: 10px 4px; font-size: 0.78rem; }
+  .week-grid tbody th { position: sticky; left: 0; z-index: 1; font-size: 0.8rem; width: 5.2em; }
+  .week-grid col.time { width: 5.2em; }
+  .week-grid .slot { padding: 8px 4px; font-size: 0.8rem; border-radius: 8px; }
+  .slot-days, .slot-special { font-size: 0.68rem !important; }
+  .week-grid td.closed-cell { font-size: 0.68rem; }
+  .grid-hint { display: block; font-size: 0.82rem; color: var(--ink-soft); margin: 0 0 8px; }
+}
+@media (min-width: 960px) { .grid-hint { display: none; } }
+body:not(.view-grid) .grid-hint { display: none !important; }
+@media (max-width: 959px) {
+  .week-grid thead th:first-child { position: sticky; left: 0; z-index: 2; }
+}
