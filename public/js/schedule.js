@@ -54,6 +54,56 @@
   });
 
   function render(data) {
+    // The next schedule shows from early registration on: /schedule?m=next
+    var wantNext = new URLSearchParams(location.search).get("m") === "next";
+    // "How to register" only on the coming-up schedule; this month's sign-ups are closed.
+    var regBox = document.querySelector(".sched-note");
+    if (regBox) regBox.hidden = !(wantNext && data.next);
+    if (data.next) {
+      var cur = data.month.split(" ")[0], nxt = data.next.month.split(" ")[0];
+      var tabs = document.getElementById("month-tabs");
+      [[cur + " · now", "/schedule", !wantNext], ["Coming up: " + nxt, "/schedule?m=next", wantNext]].forEach(function (t) {
+        tabs.appendChild(el("a", { href: t[1], "aria-current": t[2] ? "page" : "false", text: t[0] }));
+      });
+      tabs.hidden = false;
+      var ann = S.nextAnnouncement(data.next);
+      var signup = document.querySelector(".sched-note a");
+      if (wantNext) {
+        // Make it impossible to mistake for this month's schedule.
+        var start = S.formatDate(data.next.start, { month: "long", day: "numeric" });
+        var label = el("p", { class: "upcoming-label" }, [
+          el("strong", { text: "Upcoming schedule · starts " + start + ". " }),
+          document.createTextNode("For this month's classes, see "),
+          el("a", { href: "/schedule", text: cur }), document.createTextNode(".")
+        ]);
+        monthEl.parentNode.insertBefore(label, monthEl);
+        // "How to register" with a tappable Book now (texts Sam about this month)
+        var book = el("a", { href: S.smsLink("Hi! I'd like to sign up for " + nxt + " classes." + (data.next.phase === "early" ? " I'm a current student." : "")), text: "Book now" });
+        var openDay = S.formatDate(data.next.open, { month: "short", day: "numeric" });
+        noteEl.textContent = "";
+        if (data.next.phase === "early") {
+          noteEl.appendChild(document.createTextNode("Current students, tap "));
+          noteEl.appendChild(book);
+          noteEl.appendChild(document.createTextNode(" to save your spot. General registration opens " + openDay + "."));
+        } else {
+          noteEl.appendChild(document.createTextNode("Tap "));
+          noteEl.appendChild(book);
+          noteEl.appendChild(document.createTextNode(" and send us your name and class."));
+        }
+        if (signup) {
+          signup.href = S.smsLink("Hi! I'd like to sign up for " + nxt + " classes." + (data.next.phase === "early" ? " I'm a current student." : ""));
+          signup.textContent = data.next.phase === "early" ? "Current students: text to sign up" : "Text to sign up for " + nxt;
+        }
+        data = Object.assign({}, data, { month: data.next.month, classes: data.next.classes, note: "", isUpcoming: true });
+      } else {
+        var box = el("a", { class: "next-banner", href: "/schedule?m=next" }, [
+          el("span", { class: "nb-eyebrow", text: "Coming up" }),
+          el("span", { class: "nb-body" }, [el("strong", { text: ann.title }), el("span", { class: "nb-text", text: ann.text })]),
+          el("span", { class: "nb-link", text: "See " + nxt + " →" })
+        ]);
+        tabs.parentNode.insertBefore(box, tabs.nextSibling);
+      }
+    }
     var classes = (data.classes || []).map(function (c) {
       return { day: c.day, time: c.time, name: c.name, cat: S.categoryOf(c.name) };
     });
@@ -73,7 +123,9 @@
       return;
     }
 
-    var today = S.todayKey();
+    // An upcoming schedule has no "today" and no dates on the day buttons.
+    var upcoming = wantNext && !!data.isUpcoming;
+    var today = upcoming ? "" : S.todayKey();
     var days = S.DAYS.filter(function (d) {
       return classes.some(function (c) { return c.day === d.key; });
     });
@@ -122,7 +174,7 @@
 
     // ---- phone day tabs: one day at a time, opens on today (or the next day with classes) ----
     var order = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
-    var todayIdx = order.indexOf(today);
+    var todayIdx = today ? order.indexOf(today) : 1; // upcoming: start on Monday
     var tabs = el("div", { class: "day-tabs", role: "tablist", "aria-label": "Pick a day" });
     var start = null;
     for (var i = 0; i < 7 && !start; i++) {
@@ -139,7 +191,7 @@
         "aria-selected": String(d.key === start), "aria-label": d.long
       }, [
         el("span", { class: "day-tab-name", text: d.key === today ? "Today" : d.short }),
-        el("span", { class: "day-tab-date", text: String(date.getDate()) })
+        upcoming ? null : el("span", { class: "day-tab-date", text: String(date.getDate()) })
       ]);
       tabs.appendChild(tab);
     });

@@ -39,6 +39,11 @@ Pages are served at short addresses: `/schedule`, `/classes`, `/events`, `/about
 - Event flyer images are shrunk in the browser (max 1600px) and stored in KV
   under `media:<id>`, served at `/media/<id>`. Images no event uses are deleted
   on the next save.
+- Schedules are stored by month (`schedules: [{ key, start, early, open, classes }]`).
+  The one whose `start` has passed is the main schedule. The next one shows on the
+  site as "Coming up" from its `early` date (early registration for current
+  students), says "open to everyone" from its `open` date, and replaces the
+  current schedule on its `start` date. Dates use McAllen (Central) time.
 - Every save keeps the previous version under the KV key `schedule:previous`.
 - `public/data/schedule.json` is the starter schedule, used until the first save.
 

@@ -1647,3 +1647,80 @@ dialog.sheet[open] { animation: sheet-up 0.22s ease-out; }
   .footer-inner > div:first-child p:not(.footer-brand) { display: none; }
   .site-footer li { margin-bottom: 2px; }
 }
+
+/* ---------- months: this month / next month ---------- */
+.month-bar, .month-tabs { display: grid !important; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 4px; padding: 4px; margin-bottom: 14px; background: #efe8e1; border-radius: 14px; }
+.month-bar button, .month-tabs a {
+  min-height: 44px; display: flex; align-items: center; justify-content: center; gap: 6px;
+  border: 0; border-radius: 11px; background: transparent; color: var(--ink-soft);
+  font: 700 0.98rem var(--font-body); text-decoration: none; cursor: pointer;
+}
+.month-bar button[aria-pressed="true"], .month-tabs a[aria-current="page"] { background: var(--card); color: var(--ink); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12); }
+.month-tag { font: 700 0.68rem var(--font-body); text-transform: uppercase; letter-spacing: 0.06em; padding: 3px 7px; border-radius: 999px; }
+.month-tag.now { background: var(--ink); color: #fff; }
+.month-tag.draft { background: #f3eee9; color: var(--ink-soft); }
+.month-tag.published { background: var(--green-tint); color: var(--green-ink); }
+.publish-card { background: var(--orange-tint); border-radius: 14px; padding: 14px 16px; margin-bottom: 14px; }
+.publish-card.is-live { background: var(--green-tint); }
+.publish-card p { margin: 0 0 10px; font-size: 0.95rem; }
+.publish-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.next-banner {
+  display: block; margin: 0 0 14px; padding: 12px 16px; border-radius: 14px;
+  background: var(--pink-ink); color: #fff; font-weight: 700; text-align: center; text-decoration: none;
+}
+.next-banner:hover { color: #fff; background: #8f1f60; }
+.month-tabs { max-width: 420px; }
+/* schedules: dates + coming-up announcement */
+.sched-dates { display: grid; gap: 4px 12px; margin-top: 8px; }
+@media (min-width: 640px) { .sched-dates { grid-template-columns: repeat(3, 1fr); } }
+.sched-date { display: grid; gap: 4px; margin: 0; }
+.sched-date .sheet-label { margin: 8px 0 0; }
+.sched-date .hint { font-size: 0.8rem; color: var(--ink-soft); }
+.month-tag.ready { background: var(--blue-tint); color: var(--blue-ink); }
+.month-tag.early-reg { background: var(--orange); color: #fff; }
+.month-tag.open { background: var(--green-tint); color: var(--green-ink); }
+.next-banner { text-align: left; display: grid; gap: 2px; }
+.nb-eyebrow { font: 700 0.72rem var(--font-body); text-transform: uppercase; letter-spacing: 0.08em; opacity: 0.85; }
+.next-banner strong { font-size: 1.08rem; }
+.nb-text { font-weight: 500; font-size: 0.92rem; opacity: 0.92; }
+.nb-link { margin-top: 4px; text-decoration: underline; }
+.upcoming-label {
+  margin: 0 0 10px; padding: 10px 14px; border-radius: 12px;
+  background: var(--orange-tint); color: var(--ink); font-size: 0.95rem;
+}
+.month-tabs { max-width: 520px; }
+
+/* ---------- slim "coming up" banner ---------- */
+.next-banner {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px;
+  margin: 18px 0 0; padding: 12px 16px; border-radius: 14px;
+  background: var(--pink-tint); color: var(--ink);
+  border: 1px solid #f3cfe3; text-align: left; text-decoration: none;
+}
+.next-banner:hover { background: #f8d9ea; color: var(--ink); }
+.next-banner .nb-eyebrow {
+  flex: none; padding: 4px 9px; border-radius: 999px; background: var(--pink-ink); color: #fff;
+  font: 700 0.7rem var(--font-body); letter-spacing: 0.06em; text-transform: uppercase; opacity: 1;
+}
+.nb-body { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; }
+.next-banner strong { font-size: 1rem; }
+.next-banner .nb-text { font-size: 0.92rem; color: var(--ink-soft); opacity: 1; }
+.next-banner .nb-link { margin: 0 0 0 auto; font-weight: 700; font-size: 0.92rem; color: var(--pink-ink); text-decoration: none; white-space: nowrap; }
+@media (max-width: 599px) {
+  .next-banner { padding: 10px 12px; gap: 4px 10px; }
+  .nb-body { flex-basis: 100%; order: 2; display: grid; gap: 0; }
+  .next-banner .nb-link { order: 1; }
+}
+
+/* ---------- desktop: less empty space ---------- */
+@media (min-width: 900px) {
+  .section { padding: 64px 0; }
+  .hero { padding: 48px 0 56px; }
+  .pricing-split { display: grid; grid-template-columns: 1fr 1.6fr; gap: 48px; align-items: center; }
+  .pricing-split .pricing { margin-top: 0; max-width: none; }
+  .pricing-split h2 { margin-bottom: 0; }
+}
+.next-banner + .today { margin-top: 14px; }
+@media (min-width: 1000px) { .panel { min-height: 240px; } }
+.month-tabs + .next-banner { margin: 0 0 16px; }
+#sched-note-text a { font-weight: 700; color: var(--pink-ink); }
