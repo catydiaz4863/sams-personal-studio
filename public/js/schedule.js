@@ -56,6 +56,9 @@
   function render(data) {
     // The next schedule shows from early registration on: /schedule?m=next
     var wantNext = new URLSearchParams(location.search).get("m") === "next";
+    // "How to register" only on the coming-up schedule; this month's sign-ups are closed.
+    var regBox = document.querySelector(".sched-note");
+    if (regBox) regBox.hidden = !(wantNext && data.next);
     if (data.next) {
       var cur = data.month.split(" ")[0], nxt = data.next.month.split(" ")[0];
       var tabs = document.getElementById("month-tabs");
@@ -79,7 +82,7 @@
           signup.href = S.smsLink("Hi! I'd like to sign up for " + nxt + " classes." + (data.next.phase === "early" ? " I'm a current student." : ""));
           signup.textContent = data.next.phase === "early" ? "Current students: text to sign up" : "Text to sign up for " + nxt;
         }
-        data = Object.assign({}, data, { month: data.next.month, classes: data.next.classes, note: "" });
+        data = Object.assign({}, data, { month: data.next.month, classes: data.next.classes, note: "", isUpcoming: true });
       } else {
         var box = el("a", { class: "next-banner", href: "/schedule?m=next" }, [
           el("span", { class: "nb-eyebrow", text: "Coming up" }),
@@ -108,7 +111,9 @@
       return;
     }
 
-    var today = S.todayKey();
+    // An upcoming schedule has no "today" and no dates on the day buttons.
+    var upcoming = wantNext && !!data.isUpcoming;
+    var today = upcoming ? "" : S.todayKey();
     var days = S.DAYS.filter(function (d) {
       return classes.some(function (c) { return c.day === d.key; });
     });
@@ -157,7 +162,7 @@
 
     // ---- phone day tabs: one day at a time, opens on today (or the next day with classes) ----
     var order = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
-    var todayIdx = order.indexOf(today);
+    var todayIdx = today ? order.indexOf(today) : 1; // upcoming: start on Monday
     var tabs = el("div", { class: "day-tabs", role: "tablist", "aria-label": "Pick a day" });
     var start = null;
     for (var i = 0; i < 7 && !start; i++) {
@@ -174,7 +179,7 @@
         "aria-selected": String(d.key === start), "aria-label": d.long
       }, [
         el("span", { class: "day-tab-name", text: d.key === today ? "Today" : d.short }),
-        el("span", { class: "day-tab-date", text: String(date.getDate()) })
+        upcoming ? null : el("span", { class: "day-tab-date", text: String(date.getDate()) })
       ]);
       tabs.appendChild(tab);
     });
