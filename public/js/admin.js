@@ -122,15 +122,26 @@
     var list = [], byKey = {};
     (classes || []).forEach(function (c) {
       if (knownNames.indexOf(c.name) === -1) knownNames.push(c.name);
-      var key = c.name + "|" + c.time;
-      if (!byKey[key]) { byKey[key] = { id: nextId++, name: c.name, time: c.time, days: [] }; list.push(byKey[key]); }
+      var key = c.pkg ? "p:" + c.pkg : c.name + "|" + c.time;
+      if (!byKey[key]) {
+        byKey[key] = { id: nextId++, name: c.name, time: c.time, days: [], len: c.len || 60, price: c.price != null ? c.price : "", sale: c.sale || null };
+        list.push(byKey[key]);
+      }
       if (byKey[key].days.indexOf(c.day) === -1) byKey[key].days.push(c.day);
     });
     return list;
   }
   function toClasses(list) {
     var out = [];
-    list.forEach(function (e) { e.days.forEach(function (d) { out.push({ day: d, time: e.time, name: e.name }); }); });
+    list.forEach(function (e) {
+      e.days.forEach(function (d) {
+        var c = { day: d, time: e.time, name: e.name, pkg: "p" + e.id };
+        if (e.len && e.len !== 60) c.len = e.len;
+        if (e.price !== "" && e.price != null) c.price = Number(e.price);
+        if (e.sale && e.sale.price !== "" && e.sale.price != null) c.sale = e.sale;
+        out.push(c);
+      });
+    });
     return out;
   }
   function nextMonthKey(key) {
@@ -218,12 +229,12 @@
     var list = data.schedules && data.schedules.length ? data.schedules
       : [{ key: (data.monthKey || todayYMD.slice(0, 7)), label: data.month, start: "2000-01-01", classes: data.classes || [] }];
     scheds = list.map(function (x) {
-      return { key: x.key, label: x.label || labelOf(x.key), start: x.start, early: x.early || "", open: x.open || "", entries: toEntries(x.classes) };
+      return { key: x.key, label: x.label || labelOf(x.key), start: x.start, early: x.early || "", open: x.open || "", closed: (x.closed || []).slice(), entries: toEntries(x.classes) };
     });
     if (scheds.length < 2) {
       // a fresh draft for next month, starting on the 1st
       var nk = nextMonthKey(scheds[0].key);
-      scheds.push({ key: nk, label: labelOf(nk), start: nk + "-01", early: "", open: "", entries: [] });
+      scheds.push({ key: nk, label: labelOf(nk), start: nk + "-01", early: "", open: "", closed: [], entries: [] });
     }
     if (viewIdx >= scheds.length) viewIdx = 0;
     entries = scheds[viewIdx].entries;
@@ -238,13 +249,14 @@
   // ---- overlap check: same day, starts less than an hour apart ----
   function findConflicts(list) {
     var slots = [];
-    list.forEach(function (e) { e.days.forEach(function (d) { slots.push({ id: e.id, name: e.name, day: d, time: e.time }); }); });
+    list.forEach(function (e) { e.days.forEach(function (d) { slots.push({ id: e.id, name: e.name, day: d, time: e.time, len: e.len || 60 }); }); });
     var out = [];
     for (var i = 0; i < slots.length; i++) {
       for (var j = i + 1; j < slots.length; j++) {
         var a = slots[i], b = slots[j];
         if (a.day !== b.day || a.id === b.id) continue;
-        if (Math.abs(minutes(a.time) - minutes(b.time)) >= CLASS_MINUTES) continue;
+        var as = minutes(a.time), bs = minutes(b.time);
+        if (as + a.len <= bs || bs + b.len <= as) continue;
         var same = a.name === b.name && a.time === b.time;
         out.push({ a: a, b: b, same: same,
           text: dayShort(a.day) + ": " + a.name + " " + S.formatTime(a.time) +
@@ -293,7 +305,7 @@
       mine.forEach(function (e) {
         var warns = conflictsFor(e.id, conflicts);
         var text = [el("span", { class: "ed-name", text: e.name }),
-          el("span", { class: "ed-when", text: daysText(e.days) + " · " + S.formatTime(e.time) })];
+          el("span", { class: "ed-when", text: daysText(e.days) + " · " + S.formatTime(e.time) + extrasText(e) })];
         if (warns.length) text.push(el("span", { class: "ed-warn", text: warns[0] + (warns.length > 1 ? " (+" + (warns.length - 1) + " more)" : "") }));
         var item = el("button", { type: "button", class: "ed-item" + (warns.length ? " has-conflict" : ""), "data-cat": cat.key }, [
           el("span", { class: "ed-bar" }),
@@ -365,6 +377,7 @@
         var i = editing.days.indexOf(d.key);
         if (i === -1) editing.days.push(d.key); else editing.days.splice(i, 1);
         drawSheet();
+        drawMore();
       });
       dayChips.appendChild(b);
     });
@@ -385,9 +398,65 @@
     }
   }
 
+  // Short summary of a class's extras for the list: " · 1.5 hrs · $85 · Sale $50"
+  function extrasText(e) {
+    var bits = [];
+    var len = S.lengthText(e.len);
+    if (len) bits.push(len);
+    if (e.price !== "" && e.price != null) bits.push("$" + e.price);
+    if (e.sale) bits.push("Sale $" + e.sale.price + (e.sale.label ? " (" + e.sale.label + ")" : ""));
+    return bits.length ? " · " + bits.join(" · ") : "";
+  }
+
+  // "More options" inside the class panel
+  function drawMore() {
+    var holder = $("len-chips");
+    holder.textContent = "";
+    [[60, "1 hr"], [90, "1.5 hrs"], [120, "2 hrs"]].forEach(function (o) {
+      var b = chip(o[1], (editing.len || 60) === o[0]);
+      b.addEventListener("click", function () { editing.len = o[0]; drawMore(); updateSheetWarn(); });
+      holder.appendChild(b);
+    });
+    var prices = S.pricesOf({ prices: { twice: $("price-twice").value, once: $("price-once").value } });
+    var std = editing.days.length >= 2 ? prices.twice : prices.once;
+    $("std-price").textContent = "Standard: $" + std + "/month (" + (editing.days.length >= 2 ? "2+ days" : "1 day") + ")";
+    var sum = [];
+    if ((editing.len || 60) !== 60) sum.push(S.lengthText(editing.len));
+    if ($("pkg-price").value) sum.push("$" + $("pkg-price").value);
+    if ($("sale-price").value) sum.push("sale $" + $("sale-price").value);
+    $("more-sum").textContent = sum.length ? sum.join(" · ") : "length, custom price, sale";
+  }
+  ["pkg-price", "sale-price"].forEach(function (id) { $(id).addEventListener("input", drawMore); });
+
+  // Closed days for the schedule being viewed (in Note & prices)
+  function drawClosed() {
+    var x = scheds[viewIdx];
+    $("closed-label").firstChild.textContent = "Closed in " + nameOf(x) + " ";
+    var holder = $("closed-chips");
+    holder.textContent = "";
+    S.DAYS.forEach(function (d) {
+      var on = (x.closed || []).indexOf(d.key) !== -1;
+      var b = chip(d.short, on);
+      b.addEventListener("click", function () {
+        x.closed = x.closed || [];
+        var i = x.closed.indexOf(d.key);
+        if (i === -1) x.closed.push(d.key); else x.closed.splice(i, 1);
+        markDirty();
+        drawClosed();
+      });
+      holder.appendChild(b);
+    });
+  }
+
   function openSheet(entry) {
-    editing = entry ? { id: entry.id, name: entry.name, time: entry.time, days: entry.days.slice() }
-                    : { id: null, name: "", time: "", days: [] };
+    editing = entry ? { id: entry.id, name: entry.name, time: entry.time, days: entry.days.slice(), len: entry.len || 60, price: entry.price, sale: entry.sale ? Object.assign({}, entry.sale) : null }
+                    : { id: null, name: "", time: "", days: [], len: 60, price: "", sale: null };
+    $("pkg-price").value = editing.price != null ? editing.price : "";
+    $("sale-price").value = editing.sale ? editing.sale.price : "";
+    $("sale-label").value = editing.sale && editing.sale.label || "";
+    $("sale-until").value = editing.sale && editing.sale.until || "";
+    // closed unless this class already has extras
+    $("more-opts").open = !!(editing.len !== 60 || editing.price !== "" && editing.price != null || editing.sale);
     if (editing.name && knownNames.indexOf(editing.name) === -1) { customName.value = editing.name; editing.name = OTHER; }
     else customName.value = "";
     $("sheet-title").textContent = entry ? "Change class" : "New class";
@@ -402,6 +471,7 @@
     timeSelect.value = editing.time || "";
 
     drawSheet();
+    drawMore();
     sheet.showModal();
     sheet.querySelector(".sheet-inner").scrollTop = 0;
   }
@@ -419,7 +489,12 @@
     var time = timeSelect.value;
     var missing = !name ? "Pick a class." : !editing.days.length ? "Pick at least one day." : !time ? "Pick a time." : "";
     if (missing) { e.preventDefault(); sheetError.textContent = missing; return; }
-    var saved = { id: editing.id || nextId++, name: name, time: time, days: editing.days.slice() };
+    var pp = $("pkg-price").value.trim(), sp = $("sale-price").value.trim();
+    if ((pp && !/^\d{1,4}$/.test(pp)) || (sp && !/^\d{1,4}$/.test(sp))) { e.preventDefault(); sheetError.textContent = "Prices must be whole dollars, like 85."; $("more-opts").open = true; return; }
+    var sale = sp ? { price: Number(sp) } : null;
+    if (sale && $("sale-label").value.trim()) sale.label = $("sale-label").value.trim();
+    if (sale && $("sale-until").value) sale.until = $("sale-until").value;
+    var saved = { id: editing.id || nextId++, name: name, time: time, days: editing.days.slice(), len: editing.len || 60, price: pp === "" ? "" : Number(pp), sale: sale };
     var i = entries.findIndex(function (x) { return x.id === saved.id; });
     if (i === -1) entries.push(saved); else entries[i] = saved;
     if (knownNames.indexOf(name) === -1) knownNames.push(name);
@@ -450,7 +525,7 @@
   $("add-class").addEventListener("click", function () { openSheet(null); });
 
   // ---- month & prices sheet ----
-  $("open-settings").addEventListener("click", function () { $("settings-error").textContent = ""; settingsSheet.showModal(); });
+  $("open-settings").addEventListener("click", function () { $("settings-error").textContent = ""; drawClosed(); settingsSheet.showModal(); });
   settingsSheet.addEventListener("input", markDirty);
   settingsSheet.querySelector("form").addEventListener("submit", function (e) {
     var bad = ["twice", "once", "registration"].some(function (k) { var v = $("price-" + k).value.trim(); return v !== "" && !/^\d{1,4}$/.test(v); });
@@ -675,11 +750,12 @@
       var o = { key: x.key, start: x.start, classes: toClasses(x.entries) };
       if (x.early) o.early = x.early;
       if (x.open) o.open = x.open;
+      if (x.closed && x.closed.length) o.closed = x.closed;
       return o;
     });
     return { problem: problem, data: { note: $("note").value, prices: prices, events: evs, schedules: out },
       // what the social media image uses: the schedule being viewed
-      view: { month: scheds[viewIdx].label, classes: toClasses(entries), prices: prices } };
+      view: { month: scheds[viewIdx].label, classes: toClasses(entries), prices: prices, closed: scheds[viewIdx].closed || [] } };
   }
 
   saveBtn.addEventListener("click", function () {

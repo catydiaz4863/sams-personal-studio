@@ -98,7 +98,7 @@
   }
 
   // ---- prices (Sam edits these on the edit page) ----
-  var DEFAULT_PRICES = { twice: 100, once: 75, registration: 30 };
+  var DEFAULT_PRICES = { twice: 100, once: 70, registration: 30 };
   function pricesOf(data) {
     var p = (data && data.prices) || {};
     return {
@@ -159,7 +159,48 @@
     return { title: name + " registration is open", text: "Open to everyone · starts " + d(next.start) };
   }
 
+  // ---- packages: each class is a monthly package of set days ----
+  // Rows with the same pkg id belong together; older rows group by name + time.
+  function addMinutes(hhmm, mins) {
+    var p = hhmm.split(":"), t = (+p[0]) * 60 + (+p[1]) + mins;
+    return String(Math.floor(t / 60) % 24).padStart(2, "0") + ":" + String(t % 60).padStart(2, "0");
+  }
+  function lengthText(len) {
+    if (!len || len === 60) return "";
+    var h = len / 60;
+    return (h % 1 === 0 ? h : h.toFixed(1)) + " hrs";
+  }
+  function saleActive(sale) {
+    return !!(sale && (!sale.until || sale.until >= localDateKey()));
+  }
+  function packagesOf(classes, data) {
+    var prices = pricesOf(data);
+    var order = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
+    var map = {}, list = [];
+    (classes || []).forEach(function (c) {
+      var key = c.pkg ? "p:" + c.pkg : c.name + "|" + c.time;
+      if (!map[key]) {
+        map[key] = { key: key, name: c.name, time: c.time, len: c.len || 60, price: c.price, sale: c.sale, days: [], cat: categoryOf(c.name) };
+        list.push(map[key]);
+      }
+      if (map[key].days.indexOf(c.day) === -1) map[key].days.push(c.day);
+    });
+    list.forEach(function (p) {
+      p.days.sort(function (a, b) { return order.indexOf(a) - order.indexOf(b); });
+      p.standard = p.days.length >= 2 ? prices.twice : prices.once;
+      p.monthly = p.price != null ? p.price : p.standard;
+      p.custom = p.price != null || (p.len && p.len !== 60);
+      p.onSale = saleActive(p.sale);
+      p.end = addMinutes(p.time, p.len || 60);
+    });
+    return { list: list, byClass: function (c) { return map[c.pkg ? "p:" + c.pkg : c.name + "|" + c.time]; } };
+  }
+
   window.SPS = {
+    packagesOf: packagesOf,
+    lengthText: lengthText,
+    saleActive: saleActive,
+    addMinutes: addMinutes,
     nextAnnouncement: nextAnnouncement,
     EVENT_TYPES: EVENT_TYPES,
     eventType: eventType,

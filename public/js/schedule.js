@@ -104,9 +104,35 @@
         tabs.parentNode.insertBefore(box, tabs.nextSibling);
       }
     }
+    // Every class belongs to a monthly package (its set days + price).
+    var pk = S.packagesOf(data.classes, data);
     var classes = (data.classes || []).map(function (c) {
-      return { day: c.day, time: c.time, name: c.name, cat: S.categoryOf(c.name) };
+      return { day: c.day, time: c.time, name: c.name, cat: S.categoryOf(c.name), pkg: pk.byClass(c) };
     });
+    var closedDays = data.closed || [];
+    function dayNames(keys) { return joinDays(keys.map(function (k) { return S.DAYS.filter(function (d) { return d.key === k; })[0].short; })); }
+    // "$100/mo" or "$85/mo · 1.5 hrs" or "$50/mo (was $100) · Black Friday"
+    function priceText(p) {
+      var t = p.onSale ? "$" + p.sale.price + "/mo (was $" + p.monthly + ")" : "$" + p.monthly + "/mo";
+      var len = S.lengthText(p.len);
+      if (len) t += " · " + len;
+      if (p.onSale && p.sale.label) t += " · " + p.sale.label;
+      return t;
+    }
+    function pkgMeta(p) {
+      var kids = [document.createTextNode(dayNames(p.days) + " · ")];
+      if (p.onSale) kids.push(el("span", { class: "sale-tag", text: "Sale" }));
+      kids.push(document.createTextNode((p.onSale ? " " : "") + priceText(p)));
+      return el("span", { class: "pkg-meta" + (p.custom || p.onSale ? " is-special" : "") }, kids);
+    }
+    // one-line explainer above the schedule
+    if (!document.getElementById("pkg-explain")) {
+      var explain = el("p", { class: "pkg-explain", id: "pkg-explain" }, [
+        el("strong", { text: "Each class is a monthly package. " }),
+        document.createTextNode("You sign up for all of its days, like Mon & Wed.")
+      ]);
+      filtersEl.parentNode.insertBefore(explain, filtersEl);
+    }
 
     if (data.month) {
       monthEl.textContent = data.month;
@@ -127,7 +153,7 @@
     var upcoming = wantNext && !!data.isUpcoming;
     var today = upcoming ? "" : S.todayKey();
     var days = S.DAYS.filter(function (d) {
-      return classes.some(function (c) { return c.day === d.key; });
+      return closedDays.indexOf(d.key) !== -1 || classes.some(function (c) { return c.day === d.key; });
     });
 
     // ---- filters: only show categories that are actually on the schedule ----
@@ -157,6 +183,9 @@
       var h = el("h2", null, [el("span", { text: d.long })]);
       if (isToday) h.appendChild(el("span", { class: "today-tag", text: "Today" }));
       var ul = el("ul");
+      if (closedDays.indexOf(d.key) !== -1 && !classes.some(function (c) { return c.day === d.key; })) {
+        ul.appendChild(el("li", { class: "closed-row", text: "Closed this month" }));
+      }
       var lastPeriod = null;
       S.sortClasses(classes.filter(function (c) { return c.day === d.key; })).forEach(function (c) {
         var period = periodOf(c.time);
@@ -166,7 +195,7 @@
         }
         ul.appendChild(el("li", { "data-cat": c.cat, "data-item": "", "data-period": period }, [
           el("time", { text: S.formatTime(c.time) }),
-          el("span", { class: "class-name", text: c.name })
+          el("span", { class: "class-name-wrap" }, [el("span", { class: "class-name", text: c.name }), pkgMeta(c.pkg)])
         ]));
       });
       listEl.appendChild(el("section", { class: "day-card" + (isToday ? " is-today" : ""), "data-day": d.key }, [h, ul]));
@@ -227,30 +256,27 @@
         return catOrder.indexOf(a.cat) - catOrder.indexOf(b.cat) || a.name.localeCompare(b.name);
       })
       .forEach(function (g) {
-        // Daytime | Evening columns; matching days combined ("Mon & Wed")
-        var byPeriod = { daytime: {}, evening: {} };
-        g.times.forEach(function (c) {
-          var p = periodOf(c.time);
-          (byPeriod[p][c.time] = byPeriod[p][c.time] || []).push(c.day);
-        });
+        // Daytime | Evening columns; one entry per package ("Mon & Wed · 10:00 AM · $100/mo")
+        var seen = [];
+        g.times.forEach(function (c) { if (seen.indexOf(c.pkg) === -1) seen.push(c.pkg); });
         var cols = el("div", { class: "slot-cols" });
         ["daytime", "evening"].forEach(function (p) {
-          var times = Object.keys(byPeriod[p]).sort();
-          if (!times.length) return;
+          var mine = seen.filter(function (x) { return periodOf(x.time) === p; }).sort(function (a, b) { return a.time < b.time ? -1 : 1; });
+          if (!mine.length) return;
           var col = el("div", { class: "slot-col" }, [periodLabel(p)]);
-          times.forEach(function (time) {
-            var dayKeys = byPeriod[p][time].sort(function (a, b) { return dayOrder.indexOf(a) - dayOrder.indexOf(b); });
-            var names = dayKeys.map(function (k) { return S.DAYS[dayOrder.indexOf(k)].short; });
-            var hasToday = dayKeys.indexOf(today) !== -1;
+          mine.forEach(function (x) {
+            var hasToday = x.days.indexOf(today) !== -1;
+            var when = S.formatTime(x.time) + (x.len !== 60 ? "–" + S.formatTime(x.end) : "");
             col.appendChild(el("div", { class: "slot-entry" + (hasToday ? " has-today" : "") }, [
-              el("strong", { text: joinDays(names) }),
-              el("span", { text: S.formatTime(time) + (hasToday ? " · today" : "") })
+              el("strong", { text: dayNames(x.days) }),
+              el("span", { text: when + (hasToday ? " · today" : "") }),
+              el("span", { class: "slot-price" + (x.custom || x.onSale ? " is-special" : ""), text: priceText(x) })
             ]));
           });
           cols.appendChild(col);
         });
         var head = [el("span", { class: "class-dot" }), el("h3", { text: g.name })];
-        if (g.times.length === 1) head.push(el("span", { class: "class-freq", text: "Once a week" }));
+
         classListEl.appendChild(el("article", { class: "class-row", "data-cat": g.cat }, [
           el("div", { class: "class-row-head" }, head),
           cols
@@ -280,7 +306,7 @@
     var colgroup = el("colgroup", null, [el("col", { class: "time" })]);
     var headRow = el("tr", null, [el("th", { scope: "col", text: "Time" })]);
     days.forEach(function (d) {
-      colgroup.appendChild(el("col"));
+      colgroup.appendChild(el("col", { class: closedDays.indexOf(d.key) !== -1 ? "is-closed" : "" }));
       headRow.appendChild(el("th", { scope: "col", class: d.key === today ? "is-today" : "", text: d.short }));
     });
     var tbody = el("tbody");
@@ -288,8 +314,12 @@
       var tr = el("tr", { "data-row": "" }, [el("th", { scope: "row", text: S.formatTime(t) })]);
       days.forEach(function (d) {
         var td = el("td");
-        classes.filter(function (c) { return c.day === d.key && c.time === t; }).forEach(function (c) {
-          td.appendChild(el("span", { class: "slot", "data-cat": c.cat, "data-item": "", text: c.name }));
+        var here = classes.filter(function (c) { return c.day === d.key && c.time === t; });
+        if (!here.length && closedDays.indexOf(d.key) !== -1) { td.className = "closed-cell"; td.textContent = "Closed"; }
+        here.forEach(function (c) {
+          var sub = [el("span", { class: "slot-days", text: c.pkg.days.length > 1 ? dayNames(c.pkg.days) : "Once a week" })];
+          if (c.pkg.custom || c.pkg.onSale) sub.push(el("span", { class: "slot-special", text: priceText(c.pkg) }));
+          td.appendChild(el("span", { class: "slot", "data-cat": c.cat, "data-item": "" }, [el("span", { class: "slot-name", text: c.name })].concat(sub)));
         });
         tr.appendChild(td);
       });
